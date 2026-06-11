@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CMMS">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="CMMS Maintenance Offline — Kelola mesin, history kerusakan, preventive maintenance, dan stok sparepart.">
+<title>CMMS Maintenance</title>
+<!-- PWA Manifest inline -->
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22CMMS+Maintenance%22%2C%22short_name%22%3A%22CMMS%22%2C%22description%22%3A%22Sistem+Manajemen+Perawatan+Mesin+Offline%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%230f172a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg+xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'+viewBox%3D'0+0+192+192'%253E%253Crect+width%3D'192'+height%3D'192'+rx%3D'32'+fill%3D'%230f172a'%2F%253E%253Ctext+x%3D'96'+y%3D'130'+text-anchor%3D'middle'+font-size%3D'100'+fill%3D'%2322d3ee'%253E%25E2%259A%2599%25EF%25B8%258F%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#020617;color:#e2e8f0;font-family:Arial,sans-serif;font-size:14px}
+:root{--cyan:#22d3ee;--slate:#1e293b;--dark:#0f172a;--border:#334155}
+.app{display:flex;flex-direction:column;min-height:100vh}
+/* Topbar */
+.topbar{background:#0f172a;border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.topbar h1{color:var(--cyan);font-size:1rem;font-weight:900;flex:1}
+.topbar .date{color:#475569;font-size:.7rem}
+/* Bottom nav */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:#0f172a;border-top:1px solid var(--border);display:flex;z-index:100}
+.bnav button{flex:1;padding:10px 4px 8px;background:none;border:none;color:#475569;font-size:.6rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color .15s}
+.bnav button .ico{font-size:1.2rem}
+.bnav button.active{color:var(--cyan)}
+.bnav button.active .ico{filter:drop-shadow(0 0 4px #22d3ee)}
+/* Content */
+.page{display:none;padding:14px 14px 80px}
+.page.active{display:block}
+/* Cards */
+.card{background:#1e293b;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+.card-title{font-weight:700;font-size:.9rem;margin-bottom:4px}
+.card-sub{color:#64748b;font-size:.75rem}
+/* Badges */
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.65rem;font-weight:700;margin:1px}
+.b-green{background:rgba(6,78,59,.5);color:#6ee7b7;border:1px solid #047857}
+.b-amber{background:rgba(120,53,15,.5);color:#fcd34d;border:1px solid #b45309}
+.b-red{background:rgba(127,29,29,.5);color:#fca5a5;border:1px solid #b91c1c}
+.b-blue{background:rgba(30,58,138,.5);color:#93c5fd;border:1px solid #1d4ed8}
+.b-slate{background:rgba(51,65,85,.5);color:#cbd5e1;border:1px solid #475569}
+.b-cyan{background:rgba(8,145,178,.2);color:#22d3ee;border:1px solid #0891b2}
+/* Stats grid */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{border-radius:10px;padding:11px;border:1px solid}
+.stat .val{font-size:1.3rem;font-weight:900}
+.stat .lbl{font-size:.65rem;color:#94a3b8;margin-top:1px}
+/* Buttons */
+.btn{padding:8px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:.8rem;font-family:Arial,sans-serif}
+.btn-cyan{background:#0891b2;color:#fff}
+.btn-green{background:#065f46;color:#6ee7b7;border:1px solid #047857}
+.btn-red{background:rgba(127,29,29,.5);color:#fca5a5;border:1px solid #991b1b}
+.btn-sm{padding:4px 9px;font-size:.7rem;border-radius:6px;border:none;cursor:pointer;font-weight:700;font-family:Arial,sans-serif}
+.btn-edit{background:#334155;color:#fff}
+.btn-del{background:rgba(127,29,29,.4);color:#fca5a5;border:none}
+.hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+/* Form/Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;padding:12px}
+.modal-bg.open{display:flex}
+.modal{background:#0f172a;border:1px solid var(--border);border-radius:14px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#0f172a;z-index:1}
+.modal-head h3{font-size:.9rem;font-weight:700}
+.modal-close{background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;line-height:1}
+.modal-body{padding:14px}
+.fg{margin-bottom:10px}
+.fg label{display:block;font-size:.68rem;color:#94a3b8;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.fg input,.fg select,.fg textarea{width:100%;background:#1e293b;border:1px solid var(--border);color:#e2e8f0;border-radius:7px;padding:7px 10px;font-size:.82rem;outline:none;font-family:Arial,sans-serif}
+.fg input:focus,.fg select:focus{border-color:var(--cyan)}
+.fg select option{background:#1e293b}
+.btn-save{width:100%;background:#0891b2;color:#fff;border:none;padding:10px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;margin-top:6px}
+/* Search */
+.search{width:100%;background:#1e293b;border:1px solid var(--border);color:#e2e8f0;border-radius:8px;padding:8px 12px;font-size:.82rem;outline:none;margin-bottom:10px;font-family:Arial,sans-serif}
+/* Table */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:.75rem}
+thead{background:#1e293b}
+th{padding:8px 10px;color:#64748b;font-size:.65rem;text-transform:uppercase;text-align:left;white-space:nowrap}
+td{padding:8px 10px;border-top:1px solid rgba(51,65,85,.4);vertical-align:middle}
+tr:nth-child(even){background:rgba(15,23,42,.4)}
+/* Info/warn box */
+.info-box{background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.2);border-radius:7px;padding:7px 10px;font-size:.72rem;color:#94a3b8;margin-bottom:8px}
+.warn-box{background:rgba(245,158,11,.07);border:1px solid rgba(180,83,9,.3);border-radius:7px;padding:7px 10px;font-size:.72rem;color:#fcd34d;margin-bottom:8px}
+/* Rank */
+.rank-item{display:flex;align-items:center;gap:8px;background:rgba(2,6,23,.5);border-radius:7px;padding:8px 10px;margin-bottom:5px}
+.rnum{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.8rem;flex-shrink:0}
+.r1{background:#f59e0b;color:#000}.r2{background:#94a3b8;color:#000}.r3{background:#92400e;color:#fff}.rn{background:#1e293b;color:#94a3b8}
+/* Section label */
+.sec{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;margin:10px 0 6px;color:#64748b}
+.sec.cyan{color:#22d3ee}.sec.red{color:#f87171}.sec.amber{color:#fbbf24}
+/* Toast */
+.toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#065f46;color:#6ee7b7;border:1px solid #047857;border-radius:8px;padding:6px 16px;font-size:.78rem;font-weight:700;z-index:300;display:none;white-space:nowrap}
+.toast.show{display:block}
+/* Filter chips */
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.chip{padding:4px 10px;border-radius:6px;border:none;font-size:.7rem;font-weight:700;cursor:pointer;background:#1e293b;color:#94a3b8;font-family:Arial,sans-serif}
+.chip.on{background:#0891b2;color:#fff}
+/* Type toggle */
+.ttype{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
+.ttype button{padding:8px;border-radius:7px;border:2px solid var(--border);background:#1e293b;color:#94a3b8;font-size:.78rem;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;transition:all .15s}
+.ttype button.on{border-color:#0891b2;background:rgba(8,145,178,.2);color:#22d3ee}
+/* HCard fields */
+.hcf-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.hcf{background:rgba(2,6,23,.5);border-radius:6px;padding:6px 8px}
+.hcf .lbl{font-size:.62rem;color:#64748b;text-transform:uppercase}
+.hcf .val{font-size:.78rem;font-weight:600;color:#e2e8f0}
+/* Bar chart */
+.bar-row{margin-bottom:7px}
+.bar-row .bar-label{display:flex;justify-content:space-between;margin-bottom:2px;font-size:.73rem}
+.bar-bg{background:#1e293b;border-radius:3px;height:6px}
+.bar-fill{border-radius:3px;height:6px;transition:width .3s}
+/* Stok ctrl */
+.stk{display:flex;align-items:center;gap:4px;justify-content:center}
+.stk button{width:22px;height:22px;background:#334155;border:none;color:#fff;border-radius:4px;cursor:pointer;font-size:.9rem}
+/* Multi-select detail kerusakan */
+.dk-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.dk-chip{padding:4px 9px;border-radius:5px;border:1px solid #334155;background:#1e293b;color:#94a3b8;font-size:.7rem;cursor:pointer;font-family:Arial,sans-serif;transition:all .15s}
+.dk-chip.sel{background:rgba(185,28,28,.25);border-color:#b91c1c;color:#fca5a5}
+/* Part datang toggle */
+.part-datang-btn{width:100%;padding:8px;border-radius:7px;border:1px solid #047857;background:rgba(6,78,59,.3);color:#6ee7b7;font-size:.8rem;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;margin-bottom:8px}
+/* Splash screen */
+#splash{position:fixed;inset:0;background:#020617;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .4s}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .sp-logo{font-size:4rem;animation:pulse 1.2s infinite}
+#splash .sp-title{font-size:1.4rem;font-weight:900;color:#22d3ee;letter-spacing:.05em}
+#splash .sp-sub{font-size:.75rem;color:#475569}
+#splash .sp-bar{width:160px;height:3px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:8px}
+#splash .sp-progress{height:100%;background:linear-gradient(90deg,#0891b2,#22d3ee);border-radius:3px;animation:load 1s ease forwards}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes load{from{width:0}to{width:100%}}
+/* Install banner */
+#install-banner{display:none;position:fixed;bottom:68px;left:8px;right:8px;background:#0f172a;border:1px solid #0891b2;border-radius:12px;padding:10px 14px;z-index:150;flex-direction:row;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+#install-banner.show{display:flex}
+#install-banner .ib-text{flex:1;font-size:.75rem;color:#94a3b8}
+#install-banner .ib-text strong{color:#22d3ee;display:block;font-size:.82rem;margin-bottom:2px}
+/* Custom confirm dialog */
+#cmms-confirm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center;padding:16px}
+#cmms-confirm.open{display:flex}
+#cmms-confirm .cc-box{background:#0f172a;border:1px solid #334155;border-radius:14px;padding:20px;width:100%;max-width:320px}
+#cmms-confirm .cc-title{font-weight:700;margin-bottom:8px;font-size:.95rem}
+#cmms-confirm .cc-msg{font-size:.8rem;color:#94a3b8;margin-bottom:16px;line-height:1.5}
+#cmms-confirm .cc-btns{display:flex;gap:8px}
+#cmms-confirm .cc-btns button{flex:1;padding:9px;border-radius:8px;border:none;font-weight:700;font-size:.82rem;cursor:pointer;font-family:Arial,sans-serif}
+.cc-ok{background:#b91c1c;color:#fff}
+.cc-cancel{background:#334155;color:#e2e8f0}
+/* Swipe hint on first open */
+.swipe-hint{text-align:center;color:#334155;font-size:.65rem;padding:4px;letter-spacing:.05em}
+</style>
+</head>
+<body>
+<!-- Splash -->
+<div id="splash">
+  <div class="sp-logo">⚙️</div>
+  <div class="sp-title">CMMS</div>
+  <div class="sp-sub">Sistem Manajemen Perawatan Mesin</div>
+  <div class="sp-bar"><div class="sp-progress"></div></div>
+</div>
+<!-- Install Banner -->
+<div id="install-banner">
+  <div class="ib-text"><strong>📲 Pasang sebagai App</strong>Akses lebih cepat dari layar utama</div>
+  <button class="btn btn-cyan" style="font-size:.72rem;padding:6px 12px" onclick="doInstall()">Pasang</button>
+  <button style="background:none;border:none;color:#475569;font-size:1.2rem;cursor:pointer;padding:0 4px" onclick="dismissInstall()">×</button>
+</div>
+<!-- Custom Confirm -->
+<div id="cmms-confirm">
+  <div class="cc-box">
+    <div class="cc-title" id="cc-title">Konfirmasi</div>
+    <div class="cc-msg" id="cc-msg">Apakah Anda yakin?</div>
+    <div class="cc-btns">
+      <button class="cc-cancel" onclick="ccResolve(false)">Batal</button>
+      <button class="cc-ok" id="cc-ok-btn" onclick="ccResolve(true)">Hapus</button>
+    </div>
+  </div>
+</div>
+<div class="app">
+  <div class="topbar">
+    <h1>⚙️ CMMS</h1>
+    <span id="offlineBadge" style="display:none;font-size:.6rem;background:rgba(245,158,11,.15);border:1px solid #b45309;color:#fbbf24;padding:2px 7px;border-radius:4px">Offline</span>
+    <span class="date" id="topDate"></span>
+  </div>
+  <!-- Pages -->
+  <div class="page active" id="pg-dashboard"></div>
+  <div class="page" id="pg-mesin"></div>
+  <div class="page" id="pg-history"></div>
+  <div class="page" id="pg-preventive"></div>
+  <div class="page" id="pg-sparepart"></div>
+  <div class="page" id="pg-audit"></div>
+  <div class="page" id="pg-setting"></div>
+  <!-- Bottom Nav -->
+  <nav class="bnav">
+    <button class="active" onclick="nav('dashboard')"><span class="ico">📊</span>Dashboard</button>
+    <button onclick="nav('mesin')"><span class="ico">⚙️</span>Mesin</button>
+    <button onclick="nav('history')"><span class="ico">📋</span>History</button>
+    <button onclick="nav('preventive')"><span class="ico">🔧</span>PM</button>
+    <button onclick="nav('sparepart')"><span class="ico">📦</span>Stok</button>
+    <button onclick="nav('audit')"><span class="ico">📑</span>Audit</button>
+    <button onclick="nav('setting')"><span class="ico">⚙️</span>Setting</button>
+  </nav>
+  <!-- Modal -->
+  <div class="modal-bg" id="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-head"><h3 id="modal-title">Form</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast">✅ Tersimpan</div>
+</div>
+
+<script>
+// ═══ DATA ════════════════════════════════════════════════════════════════
+const MACHINES_DEFAULT=[
+  // ── AREA 2A - BUBUT (23 unit) ──
+  {id:"MB-1A",type:"BUBUT",area:"2A",no:1,merk:"DEZHOU CW G1100 D",kap:"700x4500",status:"OK"},
+  {id:"MB-2A",type:"BUBUT",area:"2A",no:2,merk:"SUNFIRM",kap:"600x3000",status:"OK"},
+  {id:"MB-3A",type:"BUBUT",area:"2A",no:3,merk:"BAOJI-1640 GD",kap:"250x1500",status:"OK"},
+  {id:"MB-4A",type:"BUBUT",area:"2A",no:4,merk:"CW 62125",kap:"900x1400",status:"OK"},
+  {id:"MB-5A",type:"BUBUT",area:"2A",no:5,merk:"TURN MASTER C 6266A",kap:"450x2000",status:"OK"},
+  {id:"MB-6A",type:"BUBUT",area:"2A",no:6,merk:"L-7A",kap:"500x2000",status:"OK"},
+  {id:"MB-7A",type:"BUBUT",area:"2A",no:7,merk:"JINLING",kap:"660x6000",status:"OK"},
+  {id:"MB-8A",type:"BUBUT",area:"2A",no:8,merk:"JIANGSU CZ 62120",kap:"1200x5000",status:"OK"},
+  {id:"MB-9A",type:"BUBUT",area:"2A",no:9,merk:"CG 150",kap:"300x2000",status:"OK"},
+  {id:"MB-10A",type:"BUBUT",area:"2A",no:10,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-11A",type:"BUBUT",area:"2A",no:11,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-12A",type:"BUBUT",area:"2A",no:12,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-13A",type:"BUBUT",area:"2A",no:13,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-14A",type:"BUBUT",area:"2A",no:14,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-15A",type:"BUBUT",area:"2A",no:15,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-16A",type:"BUBUT",area:"2A",no:16,merk:"JIANGSU CZ 6280C",kap:"800x4000",status:"OK"},
+  {id:"MB-17A",type:"BUBUT",area:"2A",no:17,merk:"CY-L1660 G",kap:"420x2000",status:"OK"},
+  {id:"MB-18A",type:"BUBUT",area:"2A",no:18,merk:"MAGNUM TECH CW 6280 B",kap:"800x4000",status:"OK"},
+  {id:"MB-19A",type:"BUBUT",area:"2A",no:19,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-20A",type:"BUBUT",area:"2A",no:20,merk:"JIANGSU CZ 6280C",kap:"800x4000",status:"OK"},
+  {id:"MB-21A",type:"BUBUT",area:"2A",no:21,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-22A",type:"BUBUT",area:"2A",no:22,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-23A",type:"BUBUT",area:"2A",no:23,merk:"TURN MASTER",kap:"660x3000",status:"OK"},
+  // ── AREA 2B - BUBUT (23 unit) ──
+  {id:"MB-1B",type:"BUBUT",area:"2B",no:1,merk:"JINLING CW 6293 C",kap:"600x4500",status:"OK"},
+  {id:"MB-2B",type:"BUBUT",area:"2B",no:2,merk:"TIDAK ADA",kap:"1000x3000",status:"REPAIR"},
+  {id:"MB-3B",type:"BUBUT",area:"2B",no:3,merk:"JINLING CW 6293 C",kap:"600x4500",status:"OK"},
+  {id:"MB-4B",type:"BUBUT",area:"2B",no:4,merk:"L-7A",kap:"500x2000",status:"OK"},
+  {id:"MB-5B",type:"BUBUT",area:"2B",no:5,merk:"JINLING CW 6293 C",kap:"600x4500",status:"OK"},
+  {id:"MB-6B",type:"BUBUT",area:"2B",no:6,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-7B",type:"BUBUT",area:"2B",no:7,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-8B",type:"BUBUT",area:"2B",no:8,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-9B",type:"BUBUT",area:"2B",no:9,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-10B",type:"BUBUT",area:"2B",no:10,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-11B",type:"BUBUT",area:"2B",no:11,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-12B",type:"BUBUT",area:"2B",no:12,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-13B",type:"BUBUT",area:"2B",no:13,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-14B",type:"BUBUT",area:"2B",no:14,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-15B",type:"BUBUT",area:"2B",no:15,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-16B",type:"BUBUT",area:"2B",no:16,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-17B",type:"BUBUT",area:"2B",no:17,merk:"DMTG CDS 6266C",kap:"660x3000",status:"OK"},
+  {id:"MB-18B",type:"BUBUT",area:"2B",no:18,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-19B",type:"BUBUT",area:"2B",no:19,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-20B",type:"BUBUT",area:"2B",no:20,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-21B",type:"BUBUT",area:"2B",no:21,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-22B",type:"BUBUT",area:"2B",no:22,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-23B",type:"BUBUT",area:"2B",no:23,merk:"CY-L1660 G",kap:"300x1500",status:"OK"},
+  // ── AREA 2C - MILLING (9 unit) ──
+  {id:"MM-1C",type:"MILLING",area:"2C",no:1,merk:"STANDART SM 9 BT",kap:"-",status:"OK"},
+  {id:"MM-2C",type:"MILLING",area:"2C",no:2,merk:"YAMASAKI YZ 8",kap:"-",status:"OK"},
+  {id:"MM-3C",type:"MILLING",area:"2C",no:3,merk:"EME TS 2 G",kap:"-",status:"OK"},
+  {id:"MM-4C",type:"MILLING",area:"2C",no:4,merk:"STEINEL FH6",kap:"-",status:"OK"},
+  {id:"MM-5C",type:"MILLING",area:"2C",no:5,merk:"PHOEBUS VST300",kap:"-",status:"REPAIR"},
+  {id:"MM-6C",type:"MILLING",area:"2C",no:6,merk:"NANTONG",kap:"-",status:"OK"},
+  {id:"MM-7C",type:"MILLING",area:"2C",no:7,merk:"MANFORD",kap:"-",status:"OK"},
+  {id:"MM-8C",type:"MILLING",area:"2C",no:8,merk:"MASTER X6336WA",kap:"-",status:"OK"},
+  {id:"MM-9C",type:"MILLING",area:"2C",no:9,merk:"STANDART SM 9 BT",kap:"-",status:"OK"},
+  // ── AREA 2C - VERTICAL BORING (3 unit) ──
+  {id:"VB-1C",type:"VERTICAL BORING",area:"2C",no:1,merk:"LIJIANG T7220B",kap:"-",status:"OK"},
+  {id:"VB-2C",type:"VERTICAL BORING",area:"2C",no:2,merk:"LIJIANG T7220B",kap:"-",status:"OK"},
+  {id:"VB-3C",type:"VERTICAL BORING",area:"2C",no:3,merk:"FRUNZE 278",kap:"-",status:"STOP"},
+  // ── AREA 2C - RADIAL DRILLING (4 unit) ──
+  {id:"RD-1C",type:"RADIAL DRILLING",area:"2C",no:1,merk:"SHENYANG 23050X 16/1",kap:"-",status:"OK"},
+  {id:"RD-2C",type:"RADIAL DRILLING",area:"2C",no:2,merk:"AKSZ 3063",kap:"-",status:"OK"},
+  {id:"RD-3C",type:"RADIAL DRILLING",area:"2C",no:3,merk:"SHENYANG 23050X 16/1",kap:"-",status:"OK"},
+  {id:"RD-4C",type:"RADIAL DRILLING",area:"2C",no:4,merk:"SHENYANG 23050X 16/1",kap:"-",status:"OK"},
+  // ── CRANE (7 unit) ──
+  {id:"C-2-1A",type:"CRANE",area:"2A",no:1,merk:"NAGASAKI",kap:"3T",status:"OK"},
+  {id:"C-2-2A",type:"CRANE",area:"2A",no:2,merk:"NAGASAKI",kap:"3T",status:"OK"},
+  {id:"C-2-1B",type:"CRANE",area:"2B",no:1,merk:"NAGASAKI",kap:"2T",status:"OK"},
+  {id:"C-2-1C",type:"CRANE",area:"2C",no:1,merk:"NAGASAKI",kap:"3T",status:"OK"},
+  {id:"C-3-1A",type:"CRANE",area:"3A",no:1,merk:"NAGASAKI",kap:"3T",status:"OK"},
+  {id:"C-3-2A",type:"CRANE",area:"3A",no:2,merk:"NAGASAKI",kap:"3T",status:"OK"},
+  {id:"C-3-1B",type:"CRANE",area:"3B",no:1,merk:"NAGASAKI",kap:"2T",status:"OK"},
+  // ── LAS MIG (Area 2A: 6, 2B: 3, 2C: 3 = 12 unit) + LAS TIG (2A:4, 2B:2, 2C:3 = 9 unit) ──
+  {id:"LM-1A",type:"LAS MIG",area:"2A",no:1,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-2A",type:"LAS MIG",area:"2A",no:2,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-3A",type:"LAS MIG",area:"2A",no:3,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-4A",type:"LAS MIG",area:"2A",no:4,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-5A",type:"LAS MIG",area:"2A",no:5,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-6A",type:"LAS MIG",area:"2A",no:6,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-1B",type:"LAS MIG",area:"2B",no:1,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-2B",type:"LAS MIG",area:"2B",no:2,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-3B",type:"LAS MIG",area:"2B",no:3,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-1C",type:"LAS MIG",area:"2C",no:1,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-2C",type:"LAS MIG",area:"2C",no:2,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LM-3C",type:"LAS MIG",area:"2C",no:3,merk:"STAHLWERK",kap:"500A",status:"OK"},
+  {id:"LT-1A",type:"LAS TIG",area:"2A",no:1,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LT-2A",type:"LAS TIG",area:"2A",no:2,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LT-3A",type:"LAS TIG",area:"2A",no:3,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LT-4A",type:"LAS TIG",area:"2A",no:4,merk:"CUTWELD",kap:"400A",status:"OK"},
+  {id:"LT-1B",type:"LAS TIG",area:"2B",no:1,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LT-2B",type:"LAS TIG",area:"2B",no:2,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LT-1C",type:"LAS TIG",area:"2C",no:1,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LT-2C",type:"LAS TIG",area:"2C",no:2,merk:"LINCOLN",kap:"500A",status:"OK"},
+  {id:"LT-3C",type:"LAS TIG",area:"2C",no:3,merk:"LINCOLN",kap:"500A",status:"OK"},
+  // ── CUTTING TORCH (4 unit) ──
+  {id:"CUT-1A",type:"CUTTING TORCH",area:"2A",no:1,merk:"VICTOR",kap:"-",status:"OK"},
+  {id:"CUT-2A",type:"CUTTING TORCH",area:"2A",no:2,merk:"VICTOR",kap:"-",status:"OK"},
+  {id:"CUT-3A",type:"CUTTING TORCH",area:"2A",no:3,merk:"TIGWELD",kap:"-",status:"OK"},
+  {id:"CUT-1B",type:"CUTTING TORCH",area:"2B",no:1,merk:"VICTOR",kap:"-",status:"OK"},
+  // ── TRAINING (4 unit) ──
+  {id:"MB-1TR",type:"BUBUT",area:"TRAINING",no:1,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-2TR",type:"BUBUT",area:"TRAINING",no:2,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MB-3TR",type:"BUBUT",area:"TRAINING",no:3,merk:"L-5A",kap:"500x2000",status:"OK"},
+  {id:"MM-1TR",type:"MILLING",area:"TRAINING",no:1,merk:"NANTONG",kap:"-",status:"OK"},
+];
+
+const AK={
+  "BUBUT":["SPINDLE","GEARBOX UTAMA","GEARBOX ERETAN","GEARBOX FEEDING","ERETAN ATAS","ERETAN MELINTANG","ERETAN BAWAH","LEAD SCREW","NUT/MUR ERETAN","NUT/MUR LEAD SCREW","APRON","TAILSTOCK","TOOLPOST","CHUCK/CEKAM","CONTROL UTAMA","CONTROL ERETAN","PANEL UTAMA","MOTOR UTAMA","MOTOR FEEDING","POMPA COOLANT","SISTEM WIRING","LAINNYA"],
+  "MILLING":["SPINDLE","ERETAN MEJA X","ERETAN MEJA Y","ERETAN SPINDLE Z","NAIK TURUN","GEARBOX UTAMA","NUT/MUR ERETAN","LEAD SCREW","TOOLHOLDER","OVERARM","CONTROL UTAMA","CONTROL ERETAN","PANEL UTAMA","MOTOR UTAMA","MOTOR FEEDING","POMPA COOLANT","SISTEM WIRING","LAINNYA"],
+  "VERTICAL BORING":["SPINDLE","ERETAN MEJA","NAIK TURUN","SWING","TOOLPOST","GEARBOX UTAMA","NUT/MUR ERETAN","CONTROL UTAMA","PANEL UTAMA","MOTOR UTAMA","MOTOR MEJA","SISTEM WIRING","LAINNYA"],
+  "RADIAL DRILLING":["SPINDLE","ERETAN SPINDLE","NAIK TURUN","SWING","CHUCK/COLLET","GEARBOX UTAMA","CONTROL UTAMA","PANEL UTAMA","MOTOR UTAMA","MOTOR SWING","SISTEM WIRING","LAINNYA"],
+  "CRANE":["MOTOR NAIK TURUN","MOTOR KIRI KANAN","MOTOR MAJU MUNDUR","REMOT/PENDANT","HOOK","WIRING HOLDER","PANEL UTAMA","WIRE ROPE","DRUM WINCH","LIMIT SWITCH ATAS","LIMIT SWITCH BAWAH","BRAKE/REM","LAINNYA"],
+  "LAS MIG":["WIRING HOLDER/KABEL LAS","HOLDER/TORCH","REGULATOR GAS","SELANG GAS","GROUNDING","WIRE FEEDER","PANEL KONTROL","NOZZLE","CONTACT TIP","SPOOL KAWAT","LAINNYA"],
+  "LAS TIG":["WIRING HOLDER/KABEL LAS","TORCH/PEMBAKAR","REGULATOR GAS","SELANG GAS","GROUNDING","PANEL KONTROL","ELEKTRODA TUNGSTEN","COLLET/BODY TORCH","FOOT PEDAL","LAINNYA"],
+  "CUTTING TORCH":["TORCH/PEMBAKAR","REGULATOR OKSIGEN","REGULATOR LPG/ASETILEN","SELANG GAS","NOSEL/TIP","VALVE TORCH","LAINNYA"],
+  "DEFAULT":["SPINDLE","GEARBOX UTAMA","GEARBOX ERETAN","PANEL UTAMA","CONTROL UTAMA","ERETAN ATAS","ERETAN MELINTANG","ERETAN BAWAH","NUT/MUR ERETAN","LEAD SCREW","TAILSTOCK","TOOLPOST","NAIK TURUN","SWING","ERETAN MEJA","MOTOR UTAMA","WIRING HOLDER","MOTOR NAIK TURUN","MOTOR KIRI KANAN","MOTOR MAJU MUNDUR","HOOK","SISTEM WIRING","LAINNYA"]
+};
+
+const DK={
+  "MEKANIK":{
+    "DEFAULT":["BEARING - Bantalan aus/rusak","GEAR - Roda gigi aus/patah","SHAFT - Poros bengkok/patah","V-BELT - Sabuk putus/kendor","SEAL - Perapat bocor","BUSHING - Bantalan geser aus","COUPLING - Kopling rusak","SPRING - Per patah","NUT/MUR - Mur aus/rusak/oblak","LAINNYA"],
+    "BUBUT":["BEARING - Bantalan aus/rusak","GEAR - Roda gigi aus/patah","SHAFT - Poros bengkok/patah","V-BELT - Sabuk putus/kendor","SEAL - Perapat bocor","BUSHING - Bantalan geser aus","COUPLING - Kopling rusak","NUT/MUR ERETAN - Mur eretan aus/oblak","NUT/MUR LEAD SCREW - Mur lead screw aus","LEAD SCREW - Ulir aus/bengkok","APRON - Mekanisme apron macet/rusak","WORM GEAR - Roda gigi cacing aus","CLUTCH/KOPLING - Kopling slip/rusak","SPRING - Per patah","LAINNYA"],
+    "MILLING":["BEARING - Bantalan aus/rusak","GEAR - Roda gigi aus/patah","SHAFT - Poros bengkok/patah","V-BELT - Sabuk putus/kendor","SEAL - Perapat bocor","BUSHING - Bantalan geser aus","NUT/MUR ERETAN - Mur eretan aus/oblak","LEAD SCREW - Ulir aus/bengkok","ARBOR - Arbor bengkok/aus","COUPLING - Kopling rusak","SPRING - Per patah","LAINNYA"],
+    "VERTICAL BORING":["BEARING - Bantalan aus/rusak","GEAR - Roda gigi aus/patah","SHAFT - Poros bengkok/patah","SEAL - Perapat bocor","BUSHING - Bantalan geser aus","NUT/MUR ERETAN - Mur eretan aus/oblak","COUPLING - Kopling rusak","LAINNYA"],
+    "RADIAL DRILLING":["BEARING - Bantalan aus/rusak","GEAR - Roda gigi aus/patah","SHAFT - Poros bengkok/patah","V-BELT - Sabuk putus/kendor","SEAL - Perapat bocor","BUSHING - Bantalan geser aus","RACK & PINION - Aus/rusak","COUPLING - Kopling rusak","LAINNYA"],
+    "LAS MIG":["NOZZLE - Ujung torch rusak/tersumbat","CONTACT TIP - Tip aus/berlubang","WIRE FEEDER ROLL - Rol aus","SELANG GAS - Bocor/tertekuk","TORCH BODY - Retak","LAINNYA"],
+    "LAS TIG":["ELEKTRODA TUNGSTEN - Pecah/kotor","COLLET - Aus/longgar","TORCH BODY - Retak","CERAMIC CUP - Pecah","SELANG GAS - Bocor","LAINNYA"],
+    "CUTTING TORCH":["NOSEL - Tersumbat/rusak","TORCH BODY - Bocor","VALVE - Macet/bocor","SELANG - Bocor","LAINNYA"],
+    "CRANE":["HOOK - Kait aus/bengkok","WIRE ROPE - Tali baja putus/aus","DRUM - Aus/retak","BEARING DRUM - Aus","BRAKE LINING - Kampas rem aus","LAINNYA"]
+  },
+  "ELEKTRIK":{
+    "DEFAULT":["MOTOR LISTRIK - Motor mati/terbakar","CONTACTOR - Kontaktor rusak","RELAY - Relay tidak bekerja","MCB/FUSE - Breaker trip/putus","WIRING - Kabel putus/terbakar","SENSOR - Sensor tidak berfungsi","INVERTER/VFD - Error/mati","GROUNDING - Kabel massa putus","LIMIT SWITCH - Switch rusak","PUSH BUTTON - Tombol rusak","LAINNYA"],
+    "LAS MIG":["POWER SOURCE - Mesin las mati","CONTACTOR INTERNAL - Rusak","POTENSIO - Pengatur arus rusak","PCB CONTROL - Board error","KABEL LAS - Putus/terbakar","GROUNDING - Rusak","LAINNYA"],
+    "LAS TIG":["POWER SOURCE - Mesin las mati","HIGH FREQUENCY - HF tidak berfungsi","CONTACTOR INTERNAL - Rusak","PCB CONTROL - Board error","KABEL LAS - Putus/terbakar","FOOT PEDAL - Tidak berfungsi","LAINNYA"],
+    "CRANE":["MOTOR HOIST - Motor naik turun mati","MOTOR TRAVEL - Motor jalan mati","MOTOR TRAVERSE - Motor lintang mati","CONTACTOR - Rusak","WIRING - Kabel putus","REMOTE CONTROL - Rusak/baterai","LIMIT SWITCH - Rusak","PANEL - Rusak","LAINNYA"]
+  },
+  "HIDROLIK":{
+    "DEFAULT":["POMPA HIDROLIK - Bocor/mati","VALVE SOLENOID - Macet/bocor","SILINDER HIDROLIK - Bocor","SELANG HIDROLIK - Bocor/pecah","OLI HIDROLIK - Habis/kotor","FILTER HIDROLIK - Tersumbat","SEAL - Bocor","LAINNYA"]
+  },
+  "PNEUMATIK":{
+    "DEFAULT":["KOMPRESOR - Mati/lemah","VALVE PNEUMATIK - Macet","SILINDER PNEUMATIK - Bocor","SELANG UDARA - Bocor/lepas","FILTER UDARA - Tersumbat","PRESSURE REGULATOR - Rusak","LAINNYA"]
+  },
+  "LAINNYA":{"DEFAULT":["Aus/korosi pemakaian normal","Kotoran/debu menumpuk","Oli/pelumas kering","Beban berlebih","Kesalahan operasi","Tidak teridentifikasi","LAINNYA"]}
+};
+
+const SP_DEFAULT=[
+  {id:"SP001",kode:"BRG-6205",nama:"Bearing 6205 2RS",kategori:"Bearing",satuan:"Pcs",stok:12,minStok:5,harga:85000,lokasi:"Rak A1",supplier:"PT. SKF"},
+  {id:"SP002",kode:"OLI-HYD46",nama:"Oli Hydraulic 46",kategori:"Pelumas",satuan:"Liter",stok:3,minStok:10,harga:35000,lokasi:"Rak B2",supplier:"PT. Pertamina"},
+  {id:"SP003",kode:"VBL-A65",nama:"V-Belt A65",kategori:"Belt",satuan:"Pcs",stok:2,minStok:4,harga:55000,lokasi:"Rak C1",supplier:"PT. Gates"},
+  {id:"SP004",kode:"BRG-6308",nama:"Bearing 6308 ZZ",kategori:"Bearing",satuan:"Pcs",stok:6,minStok:4,harga:145000,lokasi:"Rak A2",supplier:"PT. SKF"},
+];
+
+// ═══ STATE ════════════════════════════════════════════════════════════════
+// Kompresi sederhana: menghapus key yg bernilai null/kosong & menggunakan key pendek saat save
+const KEY_MAP={caseId:"ci",tanggal:"tg",mesinId:"mi",merk:"mk",area:"ar",tipeKerja:"tk",jenisKerusakan:"jk",areaKerusakan:"ak",detailKerusakan:"dk",keterangan:"kt",teknisi:"te",timeStart:"ts",timeFinish:"tf",tanggalSelesai:"ts2",downtime:"dt",pmId:"pm",partNama:"pn",partSupplier:"ps",partTglOrder:"pto",partEta:"pe",partQty:"pq",status:"st"};
+const KEY_RMAP=Object.fromEntries(Object.entries(KEY_MAP).map(([k,v])=>[v,k]));
+function compressRec(rec){const r={};for(const k in rec){const v=rec[k];if(v===null||v===undefined||v===""||( Array.isArray(v)&&v.length===0))continue;const sk=KEY_MAP[k]||k;r[sk]=v;}return r;}
+function decompressRec(rec){const r={};for(const k in rec){const v=rec[k];const lk=KEY_RMAP[k]||k;r[lk]=v;}return r;}
+function compressArr(arr){return Array.isArray(arr)?arr.map(compressRec):arr;}
+function decompressArr(arr){return Array.isArray(arr)?arr.map(decompressRec):arr;}
+function ls(k,d){
+  try{
+    const v=localStorage.getItem("cmmsL_"+k);
+    if(!v)return d;
+    const parsed=JSON.parse(v);
+    // History & PM pakai kompresi, lainnya tidak
+    if(k==="history")return decompressArr(parsed);
+    return parsed;
+  }catch{return d;}
+}
+function ss(k,v){
+  try{
+    const toStore=k==="history"?compressArr(v):v;
+    localStorage.setItem("cmmsL_"+k,JSON.stringify(toStore));
+  }catch(e){
+    // Storage penuh: coba hapus key lama lalu retry
+    console.warn("localStorage full:",e);
+  }
+}
+
+let machines=ls("machines",MACHINES_DEFAULT);
+let history=ls("history",[]);
+let preventive=ls("pm",[]);
+let spareparts=ls("sp",SP_DEFAULT);
+let curPage="dashboard";
+let editId=null;
+
+function save(k,v){ss(k,v);if(k==="history")_auditCache.html=null;showToast();}
+function showToast(){const t=document.getElementById("toast");t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
+function today(){return new Date().toISOString().split("T")[0];}
+function fmtMin(m){if(!m||m===0)return"-";const h=Math.floor(m/60),mn=m%60;return h>0?h+"j "+mn+"m":mn+"m";}
+function calcDT(s,e,d,dEnd){if(!s||!e||!d)return 0;try{const a=new Date(d+"T"+s),b=new Date((dEnd&&dEnd>=d?dEnd:d)+"T"+e),df=(b-a)/60000;return df>0?Math.round(df):0;}catch{return 0;}}
+function badge(s){const m={"OK":"b-green","Aktif":"b-green","Selesai":"b-green","REPAIR":"b-amber","Terlambat":"b-red","Proses":"b-blue","Mendatang":"b-slate","Jatuh Tempo":"b-amber","STOP":"b-red","Planned":"b-slate","Terjadwal":"b-blue","Progress":"b-blue","PREVENTIVE":"b-cyan","CORRECTIVE":"b-amber"};return"badge "+(m[s]||"b-slate");}
+function mkBadge(s){return`<span class="${badge(s)}">${s}</span>`;}
+function opts(arr,sel){return arr.map(a=>`<option value="${a}"${a===sel?" selected":""}>${a}</option>`).join("");}
+function mOpts(sel){return machines.map(m=>`<option value="${m.id}"${m.id===sel?" selected":""}>${m.id} — ${m.type} ${m.merk} (${m.area})</option>`).join("");}
+
+// ═══ NAV ══════════════════════════════════════════════════════════════════
+function nav(pg){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".bnav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("pg-"+pg).classList.add("active");
+  document.querySelectorAll(".bnav button")[["dashboard","mesin","history","preventive","sparepart","audit","setting"].indexOf(pg)].classList.add("active");
+  curPage=pg;
+  render(pg);
+}
+function render(pg){
+  if(pg==="dashboard")renderDashboard();
+  else if(pg==="mesin")renderMesin();
+  else if(pg==="history")renderHistory();
+  else if(pg==="preventive")renderPreventive();
+  else if(pg==="sparepart")renderSparepart();
+  else if(pg==="audit")renderAudit();
+  else if(pg==="setting")renderSetting();
+}
+
+// ═══ MODAL ════════════════════════════════════════════════════════════════
+function openModal(title,html){document.getElementById("modal-title").textContent=title;document.getElementById("modal-body").innerHTML=html;document.getElementById("modal").classList.add("open");}
+function closeModal(){document.getElementById("modal").classList.remove("open");editId=null;}
+
+// ═══ DASHBOARD ════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const ok=machines.filter(m=>m.status==="OK").length;
+  const rep=machines.filter(m=>m.status!=="OK").length;
+  const tlmbat=preventive.filter(p=>p.status==="Terlambat").length;
+  const low=spareparts.filter(s=>s.stok<=s.minStok).length;
+  const totalDT=history.reduce((a,h)=>a+(h.downtime||0),0);
+  const alerts=preventive.filter(p=>p.status==="Terlambat"||p.status==="Jatuh Tempo");
+  const types=["BUBUT","MILLING","CRANE","LAS MIG","LAS TIG","VERTICAL BORING","RADIAL DRILLING","CUTTING TORCH"];
+  let html=`
+  <div class="stats">
+    <div class="stat" style="border-color:#047857;background:rgba(6,78,59,.2)"><div class="val" style="color:#6ee7b7">${ok}</div><div class="lbl">Mesin OK</div></div>
+    <div class="stat" style="border-color:#b45309;background:rgba(120,53,15,.2)"><div class="val" style="color:#fcd34d">${rep}</div><div class="lbl">Repair/Stop</div></div>
+    <div class="stat" style="border-color:#b91c1c;background:rgba(127,29,29,.2)"><div class="val" style="color:#fca5a5">${tlmbat}</div><div class="lbl">PM Terlambat</div></div>
+    <div class="stat" style="border-color:#7c3aed;background:rgba(88,28,135,.2)"><div class="val" style="color:#d8b4fe">${low}</div><div class="lbl">Stok Kritis</div></div>
+  </div>
+  <div class="card" style="margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap">
+    <div><div style="font-size:.68rem;color:#64748b">Total Kasus</div><div style="font-weight:700;color:#22d3ee">${history.length}</div></div>
+    <div><div style="font-size:.68rem;color:#64748b">Total Downtime</div><div style="font-weight:700;color:#f87171">${fmtMin(totalDT)}</div></div>
+    <div><div style="font-size:.68rem;color:#64748b">Corrective</div><div style="font-weight:700;color:#fbbf24">${history.filter(h=>h.tipeKerja==="CORRECTIVE").length}</div></div>
+    <div><div style="font-size:.68rem;color:#64748b">Preventive</div><div style="font-weight:700;color:#86efac">${history.filter(h=>h.tipeKerja==="PREVENTIVE").length}</div></div>
+  </div>
+  <div class="sec">Status Mesin per Tipe</div>`;
+  types.forEach(t=>{
+    const list=machines.filter(m=>m.type===t);
+    if(!list.length)return;
+    const ok2=list.filter(m=>m.status==="OK").length;
+    html+=`<div class="card" style="padding:9px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-weight:700;font-size:.82rem">${t}</div><div style="font-size:.68rem;color:#64748b">${list.length} unit</div></div>
+      <div><span style="color:#34d399;font-weight:700">${ok2} OK</span>${list.length-ok2>0?`<span style="color:#f87171;font-weight:700;margin-left:8px">${list.length-ok2} ⚠</span>`:""}</div>
+    </div>`;
+  });
+  if(alerts.length){
+    html+=`<div class="sec red" style="margin-top:10px">⚠️ PM Perlu Perhatian (${alerts.length})</div>`;
+    alerts.forEach(p=>{
+      const m=machines.find(x=>x.id===p.machineId);
+      html+=`<div class="card" style="border-color:rgba(185,28,28,.4);margin-bottom:6px;padding:9px 12px">
+        <div style="font-weight:700;font-size:.82rem">${p.aktivitas}</div>
+        <div style="font-size:.7rem;color:#94a3b8">${m?m.id+" "+m.merk:""} · Due: ${p.nextDue}</div>
+        ${mkBadge(p.status)}
+      </div>`;
+    });
+  }
+  if(history.length){
+    html+=`<div class="sec" style="margin-top:10px">History Terbaru</div>`;
+    [...history].sort((a,b)=>(b.caseId||"").localeCompare(a.caseId||"")).slice(0,4).forEach(h=>{
+      const m=machines.find(x=>x.id===h.mesinId);
+      html+=`<div class="card" style="margin-bottom:6px;padding:9px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+          <div><div style="font-weight:700;font-size:.82rem">${h.mesinId} <span style="color:#64748b;font-weight:400">${m?m.merk:""}</span></div>
+          <div style="font-size:.7rem;color:#64748b">${h.areaKerusakan||h.keterangan||"-"}</div>
+          <div style="font-size:.65rem;color:#475569">📅${h.tanggal} ⏱${fmtMin(h.downtime)}</div></div>
+          ${mkBadge(h.status||"Proses")}
+        </div>
+      </div>`;
+    });
+  }
+  document.getElementById("pg-dashboard").innerHTML=`<div style="padding-bottom:80px">${html}</div>`;
+}
+
+// ═══ MESIN ════════════════════════════════════════════════════════════════
+let mesinQ="",mesinArea="Semua",mesinType="Semua";
+function renderMesin(){
+  const areas=["Semua",...new Set(machines.map(m=>m.area))];
+  const types=["Semua",...new Set(machines.map(m=>m.type))];
+  const filtered=machines.filter(m=>{
+    const mq=m.id.toLowerCase().includes(mesinQ.toLowerCase())||m.merk.toLowerCase().includes(mesinQ.toLowerCase());
+    return mq&&(mesinArea==="Semua"||m.area===mesinArea)&&(mesinType==="Semua"||m.type===mesinType);
+  });
+  const sc=s=>s==="OK"?"#34d399":s==="REPAIR"?"#fbbf24":"#f87171";
+  let html=`
+  <div class="hrow">
+    <div><div style="font-size:1.2rem;font-weight:900">Data <span style="color:#22d3ee">Mesin</span></div><div style="font-size:.75rem;color:#64748b">${machines.length} unit</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="exportMesin()">📊 Export</button>
+      <button class="btn btn-cyan" onclick="openAddMesin()">+ Tambah</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+    <select onchange="mesinArea=this.value;renderMesin()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:6px 9px;font-size:.78rem;outline:none">${areas.map(a=>`<option${a===mesinArea?" selected":""}>${a}</option>`).join("")}</select>
+    <select onchange="mesinType=this.value;renderMesin()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:6px 9px;font-size:.78rem;outline:none">${types.map(t=>`<option${t===mesinType?" selected":""}>${t}</option>`).join("")}</select>
+  </div>
+  <input class="search" placeholder="Cari kode/merk..." value="${mesinQ}" oninput="mesinQ=this.value;renderMesin()"/>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Kode</th><th>Jenis</th><th>Area</th><th>Merk</th><th>Status</th><th>Kskan</th><th>Aksi</th></tr></thead>
+    <tbody>`;
+  filtered.forEach(m=>{
+    const mh=history.filter(h=>h.mesinId===m.id);
+    html+=`<tr>
+      <td><span style="color:#22d3ee;font-weight:700;font-size:.72rem">${m.id}</span></td>
+      <td style="font-size:.72rem">${m.type}</td>
+      <td><span class="badge b-slate">${m.area}</span></td>
+      <td style="font-size:.75rem">${m.merk}</td>
+      <td><span style="color:${sc(m.status)};font-weight:700;font-size:.73rem">●${m.status}</span></td>
+      <td style="text-align:center;font-weight:700;color:${mh.length>2?"#f87171":"#94a3b8"}">${mh.length}x</td>
+      <td><div style="display:flex;gap:3px">
+        <button class="btn-sm btn-edit" onclick="openEditMesin('${m.id}')">Edit</button>
+        <button class="btn-sm btn-del" onclick="delMesin('${m.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById("pg-mesin").innerHTML=html;
+}
+function openAddMesin(){
+  editId=null;
+  openModal("Tambah Mesin",`
+    <div class="fg"><label>Kode Mesin *</label><input id="f-id" placeholder="cth: MB-24A"/></div>
+    <div class="fg"><label>Jenis Mesin</label><select id="f-type">${opts(["BUBUT","MILLING","VERTICAL BORING","RADIAL DRILLING","CRANE","LAS MIG","LAS TIG","CUTTING TORCH"],"BUBUT")}</select></div>
+    <div class="fg"><label>Area</label><select id="f-area">${opts(["2A","2B","2C","3A","3B","TRAINING"],"2A")}</select></div>
+    <div class="fg"><label>Merk</label><input id="f-merk"/></div>
+    <div class="fg"><label>Kapasitas</label><input id="f-kap"/></div>
+    <div class="fg"><label>Status</label><select id="f-status">${opts(["OK","REPAIR","STOP"],"OK")}</select></div>
+    <button class="btn-save" onclick="saveMesin()">💾 Simpan</button>`);
+}
+function openEditMesin(id){
+  const m=machines.find(x=>x.id===id);if(!m)return;editId=id;
+  openModal("Edit Mesin",`
+    <div class="fg"><label>Kode Mesin</label><input id="f-id" value="${m.id}" readonly style="color:#64748b"/></div>
+    <div class="fg"><label>Jenis Mesin</label><select id="f-type">${opts(["BUBUT","MILLING","VERTICAL BORING","RADIAL DRILLING","CRANE","LAS MIG","LAS TIG","CUTTING TORCH"],m.type)}</select></div>
+    <div class="fg"><label>Area</label><select id="f-area">${opts(["2A","2B","2C","3A","3B","TRAINING"],m.area)}</select></div>
+    <div class="fg"><label>Merk</label><input id="f-merk" value="${m.merk}"/></div>
+    <div class="fg"><label>Kapasitas</label><input id="f-kap" value="${m.kap}"/></div>
+    <div class="fg"><label>Status</label><select id="f-status">${opts(["OK","REPAIR","STOP"],m.status)}</select></div>
+    <button class="btn-save" onclick="saveMesin()">💾 Simpan</button>`);
+}
+function saveMesin(){
+  const id=document.getElementById("f-id").value.trim();
+  if(!id){alert("Kode wajib diisi!");return;}
+  const rec={id,type:document.getElementById("f-type").value,area:document.getElementById("f-area").value,merk:document.getElementById("f-merk").value,kap:document.getElementById("f-kap").value,status:document.getElementById("f-status").value};
+  if(editId)machines=machines.map(m=>m.id===editId?rec:m);
+  else machines=[...machines,rec];
+  save("machines",machines);closeModal();renderMesin();
+}
+function delMesin(id){if(confirm("Hapus mesin "+id+"?")){machines=machines.filter(m=>m.id!==id);save("machines",machines);renderMesin();}}
+function exportMesin(){
+  const rows=[["KODE","JENIS","AREA","MERK","KAPASITAS","STATUS","JML KERUSAKAN"],...machines.map(m=>[m.id,m.type,m.area,m.merk,m.kap,m.status,history.filter(h=>h.mesinId===m.id).length])];
+  dlCSV(rows,"Data_Mesin");
+}
+
+// ═══ HISTORY CARD ════════════════════════════════════════════════════════
+let histQ="",histFM="Semua",histFS="Semua",histFT="Semua",histPage=0;
+const HIST_PER_PAGE=50;
+function renderHistory(){
+  const filtered=history.filter(h=>{
+    const mm=histFM==="Semua"||h.mesinId===histFM;
+    const ms=histFS==="Semua"||h.status===histFS;
+    const mt=histFT==="Semua"||h.tipeKerja===histFT;
+    const mq=!histQ||(h.caseId||"").toLowerCase().includes(histQ.toLowerCase())||(h.mesinId||"").toLowerCase().includes(histQ.toLowerCase())||(h.keterangan||"").toLowerCase().includes(histQ.toLowerCase());
+    return mm&&ms&&mt&&mq;
+  });
+  const sc=s=>s==="Selesai"?"#047857":s==="Proses"?"#1d4ed8":"#b45309";
+  let html=`
+  <div class="hrow">
+    <div><div style="font-size:1.2rem;font-weight:900">History <span style="color:#22d3ee">Card</span></div><div style="font-size:.75rem;color:#64748b">${history.length} kasus</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="exportHistory()">📊 Export</button>
+      <button class="btn btn-cyan" onclick="openAddHistory()">+ Tambah</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+    <select onchange="histFM=this.value;histPage=0;renderHistory()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:5px 8px;font-size:.75rem;outline:none;max-width:130px">
+      <option value="Semua">Semua Mesin</option>${machines.map(m=>`<option value="${m.id}"${m.id===histFM?" selected":""}>${m.id}</option>`).join("")}
+    </select>
+    <select onchange="histFS=this.value;histPage=0;renderHistory()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:5px 8px;font-size:.75rem;outline:none">
+      ${opts(["Semua","Proses","Selesai","Pending"],histFS)}</select>
+    <select onchange="histFT=this.value;histPage=0;renderHistory()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:5px 8px;font-size:.75rem;outline:none">
+      ${opts(["Semua","CORRECTIVE","PREVENTIVE"],histFT)}</select>
+  </div>
+  <input class="search" placeholder="Cari Case-ID/mesin/keterangan..." value="${histQ}" oninput="histQ=this.value;histPage=0;renderHistory()"/>`;
+  if(!filtered.length)html+=`<div style="text-align:center;color:#475569;padding:30px;font-style:italic">Belum ada data history</div>`;
+  const sorted=filtered.sort((a,b)=>(b.caseId||"").localeCompare(a.caseId||""));
+  const totalPages=Math.max(1,Math.ceil(sorted.length/HIST_PER_PAGE));
+  if(histPage>=totalPages)histPage=totalPages-1;
+  const pageData=sorted.slice(histPage*HIST_PER_PAGE,(histPage+1)*HIST_PER_PAGE);
+
+  // Info baris
+  const from=sorted.length?histPage*HIST_PER_PAGE+1:0;
+  const to=Math.min((histPage+1)*HIST_PER_PAGE,sorted.length);
+  html+=`<div style="font-size:.7rem;color:#64748b;margin-bottom:8px">Menampilkan <strong style="color:#e2e8f0">${from}–${to}</strong> dari <strong style="color:#22d3ee">${sorted.length}</strong> kasus</div>`;
+
+  pageData.forEach(h=>{
+    const m=machines.find(x=>x.id===h.mesinId);
+    const tColor=h.tipeKerja==="PREVENTIVE"?"#22d3ee":"#fcd34d";
+    html+=`<div class="card" style="border-left:3px solid ${sc(h.status||"Proses")};margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;gap:6px;margin-bottom:7px">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+          <span style="color:#22d3ee;font-size:.7rem;font-weight:700">${h.caseId}</span>
+          <span style="font-weight:700">${h.mesinId}</span>
+          <span style="color:#64748b;font-size:.72rem">${m?m.merk:""}</span>
+          <span class="badge b-slate">${h.area||""}</span>
+          <span class="badge" style="background:rgba(0,0,0,.3);color:${tColor};border:1px solid ${tColor}">${h.tipeKerja||""}</span>
+          ${mkBadge(h.status||"Proses")}
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn-sm btn-edit" onclick="openEditHistory('${h.caseId}')">Edit</button>
+          <button class="btn-sm btn-del" onclick="delHistory('${h.caseId}')">✕</button>
+        </div>
+      </div>
+      <div class="hcf-grid">
+        <div class="hcf"><div class="lbl">📅 Tanggal</div><div class="val">${h.tanggal||"-"}</div></div>
+        <div class="hcf"><div class="lbl">👤 Teknisi</div><div class="val">${h.teknisi||"-"}</div></div>
+        <div class="hcf"><div class="lbl">⚠️ Jenis Kerusakan</div><div class="val">${h.jenisKerusakan||"-"}</div></div>
+        <div class="hcf"><div class="lbl">📍 Area Kerusakan</div><div class="val">${h.areaKerusakan||"-"}</div></div>
+        <div class="hcf"><div class="lbl">🔩 Detail</div><div class="val" style="font-size:.72rem">${Array.isArray(h.detailKerusakan)?h.detailKerusakan.map(d=>d.replace(/ -.*$/,"")).join(", "):(h.detailKerusakan||"-").replace(/ -.*$/,"")}</div></div>
+        <div class="hcf"><div class="lbl">⏱ Downtime</div><div class="val" style="color:#f87171">${fmtMin(h.downtime)}</div></div>
+        <div class="hcf"><div class="lbl">🕐 Mulai → Selesai</div><div class="val">${h.tanggal||"-"} ${h.timeStart||"-"} → ${h.tanggalSelesai&&h.tanggalSelesai!==h.tanggal?`<span style="color:#22d3ee">${h.tanggalSelesai}</span> `:""}${h.timeFinish||"-"}</div></div>
+      </div>
+      ${h.keterangan?`<div style="background:rgba(2,6,23,.5);border-radius:6px;padding:6px 8px;font-size:.75rem;color:#cbd5e1;margin-top:4px">📝 ${h.keterangan}</div>`:""}
+      ${h.status==="Pending"&&h.partNama?`<div style="background:rgba(245,158,11,.1);border:1px solid rgba(180,83,9,.35);border-radius:7px;padding:7px 10px;margin-top:6px;font-size:.72rem">
+        <div style="color:#fbbf24;font-weight:700;margin-bottom:4px">📦 Menunggu Part</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+          <div><span style="color:#64748b">Part: </span><span style="color:#e2e8f0;font-weight:600">${h.partNama}</span></div>
+          ${h.partQty?`<div><span style="color:#64748b">Qty: </span><span style="color:#e2e8f0">${h.partQty}</span></div>`:""}
+          ${h.partSupplier?`<div><span style="color:#64748b">Supplier: </span><span style="color:#e2e8f0">${h.partSupplier}</span></div>`:""}
+          ${h.partTglOrder?`<div><span style="color:#64748b">Order: </span><span style="color:#e2e8f0">${h.partTglOrder}</span></div>`:""}
+        </div>
+        ${h.partEta?`<div style="margin-top:5px">${etaLabel(h.partEta)}</div>`:""}
+      </div>`:""}
+    </div>`;
+  });
+
+  // Pagination controls
+  if(totalPages>1){
+    html+=`<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0 4px">
+      <button class="btn btn-sm btn-edit" style="padding:6px 14px;font-size:.75rem" onclick="histPage=0;renderHistory()" ${histPage===0?"disabled style='opacity:.35;cursor:default'":""}>«</button>
+      <button class="btn btn-sm btn-edit" style="padding:6px 14px;font-size:.75rem" onclick="histPage=Math.max(0,histPage-1);renderHistory()" ${histPage===0?"disabled style='opacity:.35;cursor:default'":""}>‹ Prev</button>
+      <span style="font-size:.75rem;color:#94a3b8">Hal <strong style="color:#22d3ee">${histPage+1}</strong> / ${totalPages}</span>
+      <button class="btn btn-sm btn-edit" style="padding:6px 14px;font-size:.75rem" onclick="histPage=Math.min(totalPages-1,histPage+1);renderHistory()" ${histPage===totalPages-1?"disabled style='opacity:.35;cursor:default'":""}>Next ›</button>
+      <button class="btn btn-sm btn-edit" style="padding:6px 14px;font-size:.75rem" onclick="histPage=totalPages-1;renderHistory()" ${histPage===totalPages-1?"disabled style='opacity:.35;cursor:default'":""}>»</button>
+    </div>`;
+  }
+
+  document.getElementById("pg-history").innerHTML=html;
+}
+
+function nextCaseId(){
+  const nums=history.map(h=>{const n=parseInt((h.caseId||"").replace(/\D/g,""));return isNaN(n)?0:n;});
+  return "CASE-"+String(Math.max(0,...nums)+1).padStart(4,"0");
+}
+
+function openAddHistory(){editId=null;buildHistoryForm({caseId:nextCaseId(),tanggal:today(),tipeKerja:"CORRECTIVE",status:"Proses"});}
+function openEditHistory(id){const h=history.find(x=>x.caseId===id);if(!h)return;editId=id;buildHistoryForm(h);}
+
+function buildHistoryForm(h){
+  const m=h.mesinId?machines.find(x=>x.id===h.mesinId):null;
+  const mtype=m?m.type:"DEFAULT";
+  const akList=AK[mtype]||AK["DEFAULT"];
+  const dkMap=h.jenisKerusakan?DK[h.jenisKerusakan]:null;
+  const dkList=dkMap?(dkMap[mtype]||dkMap["DEFAULT"]||[]):[];
+  const pmOpts=preventive.map(p=>{const pm=machines.find(x=>x.id===p.machineId);return`<option value="${p.id}"${p.id===h.pmId?" selected":""}>${p.id} - ${p.aktivitas} (${pm?pm.id:""})</option>`;}).join("");
+  openModal((editId?"Edit":"Tambah")+" History Card",`
+    <div class="info-box">📋 Case ID: <strong style="color:#22d3ee">${h.caseId}</strong></div>
+    <div class="fg"><label>Tanggal *</label><input type="date" id="h-tanggal" value="${h.tanggal||today()}"/></div>
+    <div class="fg"><label>Tipe Pekerjaan</label>
+      <div class="ttype">
+        <button id="tb-c" class="${(h.tipeKerja||"CORRECTIVE")==="CORRECTIVE"?"on":""}" onclick="setTipe('CORRECTIVE')">🔧 CORRECTIVE</button>
+        <button id="tb-p" class="${h.tipeKerja==="PREVENTIVE"?"on":""}" onclick="setTipe('PREVENTIVE')">🛡 PREVENTIVE</button>
+      </div>
+      <input type="hidden" id="h-tipeKerja" value="${h.tipeKerja||"CORRECTIVE"}"/>
+    </div>
+    <div class="fg"><label>Kode Mesin *</label>
+      <select id="h-mesinId" onchange="onMesinChangeH()"><option value="">-- Pilih Mesin --</option>${mOpts(h.mesinId||"")}</select>
+    </div>
+    ${m?`<div class="info-box">Area: <strong>${m.area}</strong> · Merk: <strong>${m.merk}</strong></div>`:""}
+    <div class="fg"><label>Jenis Kerusakan</label>
+      <select id="h-jenisKerusakan" onchange="onJenisChangeH()">
+        <option value="">-- Pilih --</option>${opts(["MEKANIK","ELEKTRIK","HIDROLIK","PNEUMATIK","LAINNYA"],h.jenisKerusakan||"")}
+      </select>
+    </div>
+    <div class="fg"><label>Area Kerusakan (Bagian yang Rusak)</label>
+      <select id="h-areaKerusakan"><option value="">-- Pilih --</option>${akList.map(a=>`<option${a===h.areaKerusakan?" selected":""}>${a}</option>`).join("")}</select>
+    </div>
+    <div class="fg" id="fg-detail" style="${dkList.length?"":"display:none"}"><label>Detail Kerusakan <span style="color:#64748b;font-size:.62rem">(bisa pilih lebih dari 1)</span></label>
+      <div class="dk-chips" id="dk-chips-container">
+        ${dkList.map(a=>{const sel=Array.isArray(h.detailKerusakan)?h.detailKerusakan.includes(a):(h.detailKerusakan===a);return`<button type="button" class="dk-chip${sel?" sel":""}" onclick="toggleDKChip(this,'${a.replace(/'/g,"&#39;")}')">${a.replace(/ -.*$/,"")}</button>`;}).join("")}
+      </div>
+      <input type="hidden" id="h-detailKerusakan" value="${Array.isArray(h.detailKerusakan)?h.detailKerusakan.join("||"):(h.detailKerusakan||"")}"/>
+    </div>
+    <div class="fg" id="fg-pm" style="${h.tipeKerja==="PREVENTIVE"?"":"display:none"}"><label>Hubungkan ke Jadwal PM (opsional)</label>
+      <select id="h-pmId"><option value="">-- Pilih PM --</option>${pmOpts}</select>
+    </div>
+    <div class="fg"><label>Keterangan Tambahan</label><input id="h-keterangan" value="${h.keterangan||""}"/></div>
+    <div class="fg"><label>Teknisi</label><input id="h-teknisi" value="${h.teknisi||""}"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fg"><label>Waktu Mulai</label><input type="time" id="h-timeStart" value="${h.timeStart||""}" onchange="calcDTForm()"/></div>
+      <div class="fg"><label>Waktu Selesai</label><input type="time" id="h-timeFinish" value="${h.timeFinish||""}" onchange="calcDTForm()"/></div>
+    </div>
+    <div class="fg"><label>Tanggal Selesai <span style="color:#64748b;font-size:.65rem">(isi jika selesai beda hari)</span></label><input type="date" id="h-tanggalSelesai" value="${h.tanggalSelesai||""}" onchange="calcDTForm()" style="border-color:${h.tanggalSelesai&&h.tanggalSelesai!==h.tanggal?'#22d3ee':''}"/></div>
+    <div id="dt-display" class="warn-box" style="${h.downtime?"":`display:none`}">⏱ Downtime: <strong>${fmtMin(h.downtime)}</strong></div>
+    <input type="hidden" id="h-downtime" value="${h.downtime||0}"/>
+    <div class="fg"><label>Status</label><select id="h-status" onchange="togglePendingInfo(this.value)">${opts(["Proses","Selesai","Pending"],h.status||"Proses")}</select></div>
+    <div class="fg"><label>Status Mesin otomatis:</label><div style="font-size:.7rem;color:#64748b">Proses / Pending → REPAIR &nbsp;·&nbsp; Selesai → OK</div></div>
+    <div id="fg-pending" style="${h.status==="Pending"?"":"display:none"}">
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(180,83,9,.4);border-radius:9px;padding:10px;margin-bottom:8px">
+        <div style="font-size:.72rem;font-weight:700;color:#fbbf24;margin-bottom:8px">📦 Info Part / Spare Part</div>
+        ${h.status==="Pending"&&h.partNama?`<button type="button" class="part-datang-btn" onclick="markPartDatang()">✅ Part Datang — Lanjut ke Pemasangan (→ Proses)</button>`:""}
+        <div class="fg"><label>Nama Part yang Diorder</label><input id="h-partNama" value="${h.partNama||""}" placeholder="cth: Bearing 6205, V-Belt A65..."/></div>
+        <div class="fg"><label>Supplier / Vendor</label><input id="h-partSupplier" value="${h.partSupplier||""}" placeholder="cth: PT. SKF Indonesia..."/></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg"><label>Tgl Order</label><input type="date" id="h-partTglOrder" value="${h.partTglOrder||today()}" onchange="calcEtaPart()"/></div>
+          <div class="fg"><label>Tgl Part Datang <span style="color:#64748b;font-size:.6rem">(estimasi / aktual)</span></label><input type="date" id="h-partEta" value="${h.partEta||""}" onchange="calcEtaPart()"/></div>
+        </div>
+        <div class="fg"><label>Qty Order</label><input id="h-partQty" value="${h.partQty||""}" placeholder="cth: 2 Pcs"/></div>
+        <div id="eta-display" style="${h.partEta?"":"display:none"};background:rgba(2,6,23,.5);border-radius:6px;padding:7px 10px;font-size:.75rem;margin-top:2px">${h.partEta?etaLabel(h.partEta):""}</div>
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveHistory()">💾 Simpan</button>`);
+}
+
+function toggleDKChip(btn,val){
+  btn.classList.toggle("sel");
+  const hidden=document.getElementById("h-detailKerusakan");
+  const current=hidden.value?hidden.value.split("||").filter(Boolean):[];
+  if(btn.classList.contains("sel")){if(!current.includes(val))current.push(val);}
+  else{const i=current.indexOf(val);if(i>-1)current.splice(i,1);}
+  hidden.value=current.join("||");
+}
+function markPartDatang(){
+  // Part datang → ubah status ke Proses (pemasangan), sembunyikan pending block
+  const sel=document.getElementById("h-status");
+  if(sel){sel.value="Proses";togglePendingInfo("Proses");}
+  // Tandai bahwa part sudah datang (isi tgl part datang jika belum)
+  const eta=document.getElementById("h-partEta");
+  if(eta&&!eta.value)eta.value=today();
+  showToast();
+}
+function setTipe(t){
+  document.getElementById("h-tipeKerja").value=t;
+  document.getElementById("tb-c").className=t==="CORRECTIVE"?"on":"";
+  document.getElementById("tb-p").className=t==="PREVENTIVE"?"on":"";
+  const fg=document.getElementById("fg-pm");if(fg)fg.style.display=t==="PREVENTIVE"?"":"none";
+}
+function togglePendingInfo(val){
+  const el=document.getElementById("fg-pending");
+  if(el)el.style.display=val==="Pending"?"":"none";
+}
+function etaLabel(eta){
+  if(!eta)return"";
+  const diff=Math.round((new Date(eta)-new Date(today()))/(1000*60*60*24));
+  if(diff<0)return`<span style="color:#f87171">⚠️ Sudah lewat ${Math.abs(diff)} hari dari estimasi!</span>`;
+  if(diff===0)return`<span style="color:#fbbf24">🟡 Estimasi tiba HARI INI</span>`;
+  return`<span style="color:#6ee7b7">🕐 Estimasi tiba ${diff} hari lagi (${eta})</span>`;
+}
+function calcEtaPart(){
+  const eta=document.getElementById("h-partEta")?document.getElementById("h-partEta").value:"";
+  const disp=document.getElementById("eta-display");
+  if(!disp)return;
+  if(eta){disp.innerHTML=etaLabel(eta);disp.style.display="";}
+  else disp.style.display="none";
+}
+function onMesinChangeH(){
+  const id=document.getElementById("h-mesinId").value;
+  const m=machines.find(x=>x.id===id);
+  const type=m?m.type:"DEFAULT";
+  const ak=AK[type]||AK["DEFAULT"];
+  const sel=document.getElementById("h-areaKerusakan");
+  sel.innerHTML='<option value="">-- Pilih --</option>'+ak.map(a=>`<option>${a}</option>`).join("");
+  const container=document.getElementById("dk-chips-container");
+  if(container)container.innerHTML="";
+  const hidden=document.getElementById("h-detailKerusakan");
+  if(hidden)hidden.value="";
+  document.getElementById("fg-detail").style.display="none";
+}
+function onJenisChangeH(){
+  const jenis=document.getElementById("h-jenisKerusakan").value;
+  const mesinId=document.getElementById("h-mesinId").value;
+  const m=machines.find(x=>x.id===mesinId);
+  const type=m?m.type:"DEFAULT";
+  const dkMap=DK[jenis]||{};
+  const dk=dkMap[type]||dkMap["DEFAULT"]||[];
+  const container=document.getElementById("dk-chips-container");
+  const hidden=document.getElementById("h-detailKerusakan");
+  const fg=document.getElementById("fg-detail");
+  if(dk.length){
+    hidden.value="";
+    container.innerHTML=dk.map(a=>`<button type="button" class="dk-chip" onclick="toggleDKChip(this,'${a.replace(/'/g,"&#39;")}')">${a.replace(/ -.*$/,"")}</button>`).join("");
+    fg.style.display="";
+  }else{fg.style.display="none";}
+}
+function calcDTForm(){
+  const s=document.getElementById("h-timeStart").value;
+  const e=document.getElementById("h-timeFinish").value;
+  const d=document.getElementById("h-tanggal").value;
+  const dEnd=document.getElementById("h-tanggalSelesai")?document.getElementById("h-tanggalSelesai").value:"";
+  // Auto-validate: tanggalSelesai tidak boleh sebelum tanggal mulai
+  if(dEnd&&dEnd<d){document.getElementById("h-tanggalSelesai").style.borderColor="#f87171";document.getElementById("dt-display").innerHTML="⚠️ Tanggal selesai tidak boleh sebelum tanggal mulai!";document.getElementById("dt-display").style.display="";return;}
+  if(document.getElementById("h-tanggalSelesai"))document.getElementById("h-tanggalSelesai").style.borderColor=dEnd&&dEnd!==d?"#22d3ee":"";
+  const dt=calcDT(s,e,d,dEnd||d);
+  document.getElementById("h-downtime").value=dt;
+  const disp=document.getElementById("dt-display");
+  if(dt>0){
+    const days=dEnd&&dEnd!==d?` (${Math.floor(dt/60/24)} hari ${Math.floor((dt%1440)/60)}j ${dt%60}m)`:"";
+    disp.innerHTML=`⏱ Downtime: <strong>${fmtMin(dt)}</strong>${days}`;disp.style.display="";}
+  else disp.style.display="none";
+}
+function saveHistory(){
+  const mesinId=document.getElementById("h-mesinId").value;
+  const tanggal=document.getElementById("h-tanggal").value;
+  if(!mesinId||!tanggal){alert("Mesin & Tanggal wajib!");return;}
+  const status=document.getElementById("h-status").value;
+  const rec={
+    caseId:editId||nextCaseId(),tanggal,mesinId,
+    merk:(machines.find(x=>x.id===mesinId)||{}).merk||"",
+    area:(machines.find(x=>x.id===mesinId)||{}).area||"",
+    tipeKerja:document.getElementById("h-tipeKerja").value,
+    jenisKerusakan:document.getElementById("h-jenisKerusakan").value,
+    areaKerusakan:document.getElementById("h-areaKerusakan").value,
+    detailKerusakan:(()=>{const v=document.getElementById("h-detailKerusakan")?document.getElementById("h-detailKerusakan").value:"";return v?v.split("||").filter(Boolean):[];})(),
+    keterangan:document.getElementById("h-keterangan").value,
+    teknisi:document.getElementById("h-teknisi").value,
+    timeStart:document.getElementById("h-timeStart").value,
+    timeFinish:document.getElementById("h-timeFinish").value,
+    tanggalSelesai:document.getElementById("h-tanggalSelesai")?document.getElementById("h-tanggalSelesai").value:"",
+    downtime:parseInt(document.getElementById("h-downtime").value)||0,
+    pmId:document.getElementById("h-pmId")?document.getElementById("h-pmId").value:"",
+    partNama:document.getElementById("h-partNama")?document.getElementById("h-partNama").value:"",
+    partSupplier:document.getElementById("h-partSupplier")?document.getElementById("h-partSupplier").value:"",
+    partTglOrder:document.getElementById("h-partTglOrder")?document.getElementById("h-partTglOrder").value:"",
+    partEta:document.getElementById("h-partEta")?document.getElementById("h-partEta").value:"",
+    partQty:document.getElementById("h-partQty")?document.getElementById("h-partQty").value:"",
+    status
+  };
+  if(status==="Proses"||status==="Pending")machines=machines.map(m=>m.id===mesinId?{...m,status:"REPAIR"}:m);
+  else if(status==="Selesai"){
+    const others=history.filter(h=>h.mesinId===mesinId&&h.caseId!==rec.caseId&&(h.status==="Proses"||h.status==="Pending"));
+    if(!others.length)machines=machines.map(m=>m.id===mesinId?{...m,status:"OK"}:m);
+  }
+  save("machines",machines);
+  if(editId)history=history.map(h=>h.caseId===editId?rec:h);
+  else history=[...history,rec];
+  save("history",history);closeModal();renderHistory();
+}
+function delHistory(id){
+  if(!confirm("Hapus?"))return;
+  const h=history.find(x=>x.caseId===id);
+  history=history.filter(x=>x.caseId!==id);
+  if(h){const rem=history.filter(x=>x.mesinId===h.mesinId&&(x.status==="Proses"||x.status==="Pending"));if(!rem.length)machines=machines.map(m=>m.id===h.mesinId?{...m,status:"OK"}:m);}
+  save("machines",machines);save("history",history);renderHistory();
+}
+function exportHistory(){
+  const rows=[["CASE-ID","TGL MULAI","TGL SELESAI","AREA","KODE MESIN","MERK","TIPE","JENIS KERUSAKAN","AREA KERUSAKAN","DETAIL","KETERANGAN","WAKTU MULAI","WAKTU SELESAI","DOWNTIME","TEKNISI","STATUS","PART DIORDER","SUPPLIER","TGL ORDER","EST. TIBA","QTY"],
+    ...history.map(h=>[h.caseId,h.tanggal,h.tanggalSelesai||h.tanggal,h.area,h.mesinId,h.merk,h.tipeKerja,h.jenisKerusakan,h.areaKerusakan,Array.isArray(h.detailKerusakan)?h.detailKerusakan.map(d=>d.replace(/ -.*$/,"")).join("; "):(h.detailKerusakan||"").replace(/ -.*$/,""),h.keterangan,h.timeStart,h.timeFinish,fmtMin(h.downtime),h.teknisi,h.status,h.partNama||"",h.partSupplier||"",h.partTglOrder||"",h.partEta||"",h.partQty||""])];
+  dlCSV(rows,"History_Card");
+}
+
+// ═══ PREVENTIVE ══════════════════════════════════════════════════════════
+// Template checklist aktivitas PM per tipe mesin
+const PM_TEMPLATE={
+  "BUBUT":[
+    {kat:"Harian",    items:["Bersihkan chip/serbuk dari mesin","Cek level oli spindle","Pelumasan eretan atas & melintang","Cek kondisi chuck/cekam","Cek tekanan coolant"]},
+    {kat:"Mingguan",  items:["Bersihkan & lumasi lead screw","Cek & kencangkan baut toolpost","Pelumasan apron (oil gun)","Cek kondisi v-belt","Bersihkan filter coolant","Cek backlash eretan"]},
+    {kat:"Bulanan",   items:["Ganti oli gearbox eretan","Cek alignment chuck","Pelumasan tailstock","Cek kondisi bearing spindle","Kencangkan semua baut dudukan","Cek & setel rem/brake","Kalibrasi eretan (dial indicator)"]},
+    {kat:"3 Bulanan", items:["Ganti oli gearbox utama","Cek kondisi nut/mur lead screw","Cek kondisi gear feeding","Overhaul apron","Bersihkan panel listrik","Cek koneksi wiring"]},
+    {kat:"6 Bulanan", items:["Cek & ganti bearing eretan jika aus","Overhaul headstock","Cek kelurusan mesin (leveling)","Ganti seal pompa coolant","Cek motor listrik (isolasi)"]},
+    {kat:"Tahunan",   items:["Overhaul total gearbox","Cek & kalibrasi geometri mesin","Ganti semua bearing yang aus","Cat ulang bagian berkarat","Audit komponen elektrik menyeluruh"]}
+  ],
+  "MILLING":[
+    {kat:"Harian",    items:["Bersihkan meja & chip","Cek level oli","Pelumasan meja X/Y/Z","Cek kondisi toolholder","Cek coolant"]},
+    {kat:"Mingguan",  items:["Pelumasan lead screw X/Y/Z","Cek backlash meja","Bersihkan taper spindle","Cek v-belt","Bersihkan filter coolant"]},
+    {kat:"Bulanan",   items:["Ganti oli gearbox","Cek nut/mur eretan X/Y/Z","Cek kondisi bearing spindle","Kalibrasi kerataan meja","Cek panel listrik"]},
+    {kat:"3 Bulanan", items:["Overhaul gearbox","Cek gear feeding","Cek koneksi wiring","Bersihkan panel"]},
+    {kat:"6 Bulanan", items:["Cek bearing spindle","Ganti seal","Cek motor listrik"]},
+    {kat:"Tahunan",   items:["Overhaul total","Kalibrasi geometri","Audit elektrik"]}
+  ],
+  "CRANE":[
+    {kat:"Harian",    items:["Cek kondisi hook & pengunci","Test rem naik-turun","Cek remote/pendant semua tombol","Cek bunyi motor abnormal","Inspeksi visual wire rope"]},
+    {kat:"Mingguan",  items:["Pelumasan wire rope","Cek brake pad ketebalan","Cek limit switch atas & bawah","Cek kondisi drum","Bersihkan panel kontrol"]},
+    {kat:"Bulanan",   items:["Uji beban (load test)","Cek bearing drum","Ganti oli gearbox hoist","Cek motor listrik","Kencangkan semua koneksi kabel"]},
+    {kat:"3 Bulanan", items:["Overhaul rem/brake","Cek rope sheave","Audit wiring"]},
+    {kat:"6 Bulanan", items:["Ganti wire rope jika aus","Overhaul gearbox","Uji SWL penuh"]},
+    {kat:"Tahunan",   items:["Inspeksi struktural","Sertifikasi ulang","Overhaul total"]}
+  ],
+  "LAS MIG":[
+    {kat:"Harian",    items:["Bersihkan nozzle dari spatter","Cek contact tip — ganti jika aus","Cek kondisi selang gas","Cek koneksi grounding","Cek spool kawat"]},
+    {kat:"Mingguan",  items:["Bersihkan wire feeder & roll","Cek kondisi torch body","Cek regulator gas (pressure)","Bersihkan interior mesin dari debu"]},
+    {kat:"Bulanan",   items:["Ganti contact tip & nozzle (preventif)","Cek kabel las — kondisi isolasi","Cek PCB control (visual)","Kalibrasi amper meter"]},
+    {kat:"3 Bulanan", items:["Service wire feeder (lubrication)","Cek kipas pendingin","Audit wiring internal"]},
+    {kat:"6 Bulanan", items:["Cek & bersihkan trafo","Uji parameter las","Overhaul torch"]},
+    {kat:"Tahunan",   items:["Kalibrasi mesin las","Audit total komponen","Ganti selang gas"]}
+  ],
+  "LAS TIG":[
+    {kat:"Harian",    items:["Cek elektroda tungsten","Bersihkan ceramic cup","Cek kondisi selang gas & regulator","Cek foot pedal","Cek grounding"]},
+    {kat:"Mingguan",  items:["Ganti collet jika aus","Bersihkan torch body","Cek kabel las isolasi","Bersihkan interior dari debu"]},
+    {kat:"Bulanan",   items:["Cek HF (high frequency) starter","Cek PCB control","Kalibrasi amper","Service torch"]},
+    {kat:"3 Bulanan", items:["Audit wiring","Cek kipas pendingin","Service foot pedal"]},
+    {kat:"6 Bulanan", items:["Overhaul torch","Uji parameter","Cek trafo"]},
+    {kat:"Tahunan",   items:["Kalibrasi total","Audit komponen","Overhaul"]}
+  ],
+  "VERTICAL BORING":[
+    {kat:"Harian",    items:["Bersihkan chip & meja","Cek level oli","Pelumasan meja putar","Cek toolpost"]},
+    {kat:"Mingguan",  items:["Pelumasan eretan vertikal","Cek backlash","Cek kondisi bearing meja","Bersihkan filter"]},
+    {kat:"Bulanan",   items:["Ganti oli gearbox","Cek nut/mur eretan","Cek panel listrik","Kalibrasi kesejajaran"]},
+    {kat:"3 Bulanan", items:["Overhaul gearbox","Cek wiring","Audit mekanik"]},
+    {kat:"6 Bulanan", items:["Cek bearing spindle","Ganti seal","Overhaul"]},
+    {kat:"Tahunan",   items:["Overhaul total","Kalibrasi geometri","Audit elektrik"]}
+  ],
+  "RADIAL DRILLING":[
+    {kat:"Harian",    items:["Bersihkan chip & lengan","Cek level oli","Pelumasan column & arm","Cek chuck/collet"]},
+    {kat:"Mingguan",  items:["Cek rack & pinion naik-turun","Pelumasan swing arm","Cek v-belt","Bersihkan filter"]},
+    {kat:"Bulanan",   items:["Ganti oli gearbox","Cek bearing spindle","Cek panel","Kalibrasi kesejajaran spindle"]},
+    {kat:"3 Bulanan", items:["Overhaul gearbox","Audit wiring","Cek motor"]},
+    {kat:"6 Bulanan", items:["Cek bearing column","Overhaul spindle","Ganti seal"]},
+    {kat:"Tahunan",   items:["Overhaul total","Kalibrasi","Audit elektrik"]}
+  ],
+  "CUTTING TORCH":[
+    {kat:"Harian",    items:["Cek kondisi nosel — bersihkan/ganti","Cek selang gas bocor (sabun)","Cek regulator pressure","Cek valve torch lancar","Inspeksi kondisi torch body"]},
+    {kat:"Mingguan",  items:["Bersihkan semua nosel","Cek koneksi selang","Test semua valve"]},
+    {kat:"Bulanan",   items:["Ganti nosel (preventif)","Cek regulator kalibrasi","Inspeksi torch body retak"]},
+    {kat:"3 Bulanan", items:["Ganti selang gas jika getas","Overhaul torch"]},
+    {kat:"Tahunan",   items:["Ganti selang & regulator","Audit total"]}
+  ],
+  "DEFAULT":[
+    {kat:"Harian",    items:["Bersihkan mesin dari kotoran/chip","Cek level oli & pelumas","Inspeksi visual kondisi mesin"]},
+    {kat:"Mingguan",  items:["Pelumasan semua titik yang ditentukan","Cek kondisi v-belt / rantai","Bersihkan filter","Cek bunyi/getaran abnormal"]},
+    {kat:"Bulanan",   items:["Ganti oli sesuai jadwal","Cek kondisi bearing","Kencangkan baut-baut","Cek panel listrik"]},
+    {kat:"3 Bulanan", items:["Overhaul komponen slaus","Cek wiring","Kalibrasi"]},
+    {kat:"Tahunan",   items:["Overhaul total","Audit menyeluruh"]}
+  ]
+};
+
+// Hitung nextDue berdasarkan lastDone + frekuensi
+function calcNextDue(lastDone, frekuensi){
+  if(!lastDone)return"";
+  const d=new Date(lastDone);
+  const f={"Harian":1,"Mingguan":7,"Bulanan":30,"3 Bulanan":90,"6 Bulanan":180,"Tahunan":365};
+  d.setDate(d.getDate()+(f[frekuensi]||30));
+  return d.toISOString().split("T")[0];
+}
+
+// Hitung status PM otomatis berdasarkan nextDue
+function calcPMStatus(nextDue){
+  if(!nextDue)return"Mendatang";
+  const diff=Math.round((new Date(nextDue)-new Date(today()))/(1000*60*60*24));
+  if(diff<0)return"Terlambat";
+  if(diff<=7)return"Jatuh Tempo";
+  return"Mendatang";
+}
+
+// Update semua status PM setiap render
+function refreshPMStatus(){
+  let changed=false;
+  preventive=preventive.map(p=>{
+    const ns=calcPMStatus(p.nextDue);
+    if(ns!==p.status){changed=true;return{...p,status:ns};}
+    return p;
+  });
+  if(changed)ss("pm",preventive);
+}
+
+let pmFilter="Semua", pmArea="Semua", pmType="Semua";
+
+function renderPreventive(){
+  refreshPMStatus();
+  const areas=["Semua",...new Set(machines.map(m=>m.area))];
+  const types=["Semua",...new Set(machines.map(m=>m.type))];
+
+  const filtered=preventive.filter(p=>{
+    const m=machines.find(x=>x.id===p.machineId);
+    const okArea=pmArea==="Semua"||(m&&m.area===pmArea);
+    const okType=pmType==="Semua"||(m&&m.type===pmType);
+    const okStatus=pmFilter==="Semua"||p.status===pmFilter;
+    return okArea&&okType&&okStatus;
+  });
+
+  const terlambat=filtered.filter(p=>p.status==="Terlambat").length;
+  const jatuhTempo=filtered.filter(p=>p.status==="Jatuh Tempo").length;
+  const mendatang=filtered.filter(p=>p.status==="Mendatang").length;
+
+  let html=`
+  <div class="hrow">
+    <div><div style="font-size:1.2rem;font-weight:900">Preventive <span style="color:#22d3ee">Maintenance</span></div><div style="font-size:.72rem;color:#64748b">${preventive.length} jadwal terdaftar</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-green" style="font-size:.75rem;padding:7px 10px" onclick="exportPM()">📊 Export</button>
+      <button class="btn" style="background:#7c3aed;color:#fff;font-size:.75rem;padding:7px 10px" onclick="openAddPMBulk()">📋 Tambah dari Template</button>
+      <button class="btn btn-cyan" style="font-size:.75rem;padding:7px 10px" onclick="openAddPM()">+ Manual</button>
+    </div>
+  </div>
+  <!-- Summary strip -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+    <div class="card" style="padding:9px;text-align:center;border-color:rgba(185,28,28,.4);cursor:pointer" onclick="pmFilter='Terlambat';renderPreventive()">
+      <div style="font-weight:900;font-size:1.2rem;color:#f87171">${terlambat}</div><div style="font-size:.62rem;color:#64748b">Terlambat</div></div>
+    <div class="card" style="padding:9px;text-align:center;border-color:rgba(180,83,9,.4);cursor:pointer" onclick="pmFilter='Jatuh Tempo';renderPreventive()">
+      <div style="font-weight:900;font-size:1.2rem;color:#fbbf24">${jatuhTempo}</div><div style="font-size:.62rem;color:#64748b">Jatuh Tempo</div></div>
+    <div class="card" style="padding:9px;text-align:center;cursor:pointer" onclick="pmFilter='Mendatang';renderPreventive()">
+      <div style="font-weight:900;font-size:1.2rem;color:#6ee7b7">${mendatang}</div><div style="font-size:.62rem;color:#64748b">Mendatang</div></div>
+  </div>
+  <!-- Filter -->
+  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+    <select onchange="pmArea=this.value;renderPreventive()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:5px 8px;font-size:.75rem;outline:none">
+      ${areas.map(a=>`<option value="${a}"${a===pmArea?" selected":""}>${a}</option>`).join("")}
+    </select>
+    <select onchange="pmType=this.value;renderPreventive()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:5px 8px;font-size:.75rem;outline:none">
+      ${types.map(t=>`<option value="${t}"${t===pmType?" selected":""}>${t}</option>`).join("")}
+    </select>
+    <select onchange="pmFilter=this.value;renderPreventive()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:5px 8px;font-size:.75rem;outline:none">
+      ${["Semua","Terlambat","Jatuh Tempo","Mendatang"].map(s=>`<option value="${s}"${s===pmFilter?" selected":""}>${s}</option>`).join("")}
+    </select>
+  </div>`;
+
+  if(!filtered.length){
+    html+=`<div style="text-align:center;color:#475569;padding:30px;font-style:italic">Tidak ada jadwal PM${pmFilter!=="Semua"?" untuk filter ini":""}</div>`;
+  }
+
+  const groups={Terlambat:[],  "Jatuh Tempo":[], Mendatang:[]};
+  filtered.forEach(p=>(groups[p.status]||groups.Mendatang).push(p));
+  const gc={Terlambat:{c:"rgba(185,28,28,.4)",lc:"#f87171",ico:"🔴"},
+            "Jatuh Tempo":{c:"rgba(180,83,9,.4)",lc:"#fbbf24",ico:"🟡"},
+            Mendatang:{c:"#334155",lc:"#64748b",ico:"🟢"}};
+
+  ["Terlambat","Jatuh Tempo","Mendatang"].forEach(g=>{
+    if(!groups[g].length)return;
+    html+=`<div class="sec" style="color:${gc[g].lc}">${gc[g].ico} ${g} (${groups[g].length})</div>`;
+    groups[g].forEach(p=>{
+      const m=machines.find(x=>x.id===p.machineId);
+      const diff=p.nextDue?Math.round((new Date(p.nextDue)-new Date(today()))/(1000*60*60*24)):null;
+      const diffText=diff===null?""
+        :diff<0?`<span style="color:#f87171;font-size:.68rem">⚠️ Lewat ${Math.abs(diff)} hari</span>`
+        :diff===0?`<span style="color:#fbbf24;font-size:.68rem">🔔 Hari ini!</span>`
+        :`<span style="color:#94a3b8;font-size:.68rem">${diff} hari lagi</span>`;
+      const checklist=p.checklist||[];
+      const total=checklist.length;
+      const done=checklist.filter(c=>c.done).length;
+      const pct=total?Math.round(done/total*100):0;
+      html+=`<div class="card" style="border-left:3px solid ${gc[g].lc};margin-bottom:8px;padding:10px 12px">
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:.85rem;margin-bottom:2px">${p.aktivitas}</div>
+            <div style="font-size:.7rem;color:#94a3b8;margin-bottom:3px">⚙️ ${m?m.id+" · "+m.type+" · "+m.area:p.machineId} · 🔄 ${p.frekuensi}</div>
+            <div style="font-size:.68rem;color:#475569">✅ Terakhir: <span style="color:#e2e8f0">${p.lastDone||"-"}</span> · 📅 Due: <span style="color:${gc[g].lc}">${p.nextDue||"-"}</span> ${diffText}</div>
+            ${p.teknisi?`<div style="font-size:.68rem;color:#475569;margin-top:2px">👤 ${p.teknisi}</div>`:""}
+            ${total>0?`<div style="margin-top:6px">
+              <div style="display:flex;justify-content:space-between;font-size:.65rem;color:#64748b;margin-bottom:3px"><span>Checklist Progress</span><span style="color:${pct===100?"#6ee7b7":"#94a3b8"}">${done}/${total} (${pct}%)</span></div>
+              <div class="bar-bg"><div class="bar-fill" style="background:${pct===100?"#059669":"#0891b2"};width:${pct}%"></div></div>
+            </div>`:""}
+            ${p.catatan?`<div style="font-size:.7rem;color:#94a3b8;margin-top:4px;font-style:italic">📝 ${p.catatan}</div>`:""}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            <button class="btn-sm" style="background:#065f46;color:#6ee7b7;border:none;font-size:.68rem" onclick="openChecklistPM('${p.id}')">✓ Checklist</button>
+            <button class="btn-sm btn-edit" style="font-size:.68rem" onclick="openEditPM('${p.id}')">Edit</button>
+            <button class="btn-sm btn-del" style="font-size:.68rem" onclick="delPM('${p.id}')">✕</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+
+  document.getElementById("pg-preventive").innerHTML=html;
+}
+
+// ─── TAMBAH MANUAL ────────────────────────────────────────────────────────
+function openAddPM(){
+  openModal("Tambah PM Manual",`
+    <div class="fg"><label>Mesin *</label><select id="pm-mesin" onchange="onPMMesinChange()"><option value="">-- Pilih Mesin --</option>${mOpts("")}</select></div>
+    <div class="fg"><label>Aktivitas PM *</label><input id="pm-akt" placeholder="cth: Pelumasan Spindle, Ganti Oli Gearbox..."/></div>
+    <div class="fg"><label>Frekuensi</label><select id="pm-frek" onchange="onPMFrekChange()">${opts(["Harian","Mingguan","Bulanan","3 Bulanan","6 Bulanan","Tahunan"],"Bulanan")}</select></div>
+    <div class="fg"><label>Terakhir Dilakukan</label><input type="date" id="pm-last" value="${today()}" onchange="onPMFrekChange()"/></div>
+    <div class="fg"><label>Jadwal Berikutnya <span style="color:#22d3ee;font-size:.65rem">(otomatis terhitung)</span></label><input type="date" id="pm-next"/></div>
+    <div class="fg"><label>Teknisi PIC</label><input id="pm-tek" placeholder="Nama teknisi penanggung jawab"/></div>
+    <div class="fg"><label>Catatan</label><input id="pm-cat" placeholder="Opsional..."/></div>
+    <button class="btn-save" onclick="savePM(null)">💾 Simpan</button>`);
+  setTimeout(()=>onPMFrekChange(),50);
+}
+
+function onPMMesinChange(){}
+function onPMFrekChange(){
+  const last=document.getElementById("pm-last");
+  const next=document.getElementById("pm-next");
+  const frek=document.getElementById("pm-frek");
+  if(last&&next&&frek)next.value=calcNextDue(last.value,frek.value);
+}
+
+// ─── TAMBAH BULK DARI TEMPLATE ────────────────────────────────────────────
+function openAddPMBulk(){
+  const mesinOpts=`<option value="">-- Pilih Mesin --</option>${mOpts("")}`;
+  openModal("📋 Tambah PM dari Template",`
+    <div class="fg"><label>Pilih Mesin *</label>
+      <select id="bulk-mesin" onchange="loadPMTemplate()">${mesinOpts}</select>
+    </div>
+    <div class="fg"><label>Teknisi PIC</label><input id="bulk-tek" placeholder="Nama teknisi"/></div>
+    <div class="fg"><label>Tanggal Mulai</label><input type="date" id="bulk-start" value="${today()}"/></div>
+    <div id="bulk-template-area" style="margin-top:8px">
+      <div style="color:#475569;font-size:.78rem;font-style:italic">Pilih mesin dulu untuk melihat template checklist</div>
+    </div>
+    <button class="btn-save" style="margin-top:10px" onclick="savePMBulk()">💾 Simpan Semua yang Dipilih</button>`);
+}
+
+function loadPMTemplate(){
+  const mesinId=document.getElementById("bulk-mesin").value;
+  if(!mesinId){document.getElementById("bulk-template-area").innerHTML='<div style="color:#475569;font-size:.78rem">Pilih mesin dulu</div>';return;}
+  const m=machines.find(x=>x.id===mesinId);
+  const tpl=PM_TEMPLATE[m?m.type:"DEFAULT"]||PM_TEMPLATE["DEFAULT"];
+  const colors={"Harian":"#22d3ee","Mingguan":"#6ee7b7","Bulanan":"#fbbf24","3 Bulanan":"#f87171","6 Bulanan":"#d8b4fe","Tahunan":"#fb923c"};
+  let html=`<div style="font-size:.72rem;color:#64748b;margin-bottom:8px">Pilih aktivitas yang akan dijadwalkan:</div>`;
+  tpl.forEach((grp,gi)=>{
+    html+=`<div style="margin-bottom:10px">
+      <div style="font-size:.72rem;font-weight:700;color:${colors[grp.kat]||"#94a3b8"};margin-bottom:5px;text-transform:uppercase">${grp.kat}</div>`;
+    grp.items.forEach((item,ii)=>{
+      const key=`bulk-${gi}-${ii}`;
+      // Cek apakah sudah ada PM ini untuk mesin ini
+      const exists=preventive.some(p=>p.machineId===mesinId&&p.aktivitas===item);
+      html+=`<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;background:rgba(2,6,23,.4);margin-bottom:3px;cursor:${exists?"default":"pointer"};opacity:${exists?".45":"1"}">
+        <input type="checkbox" id="${key}" value="${item}" data-frek="${grp.kat}" ${exists?"disabled checked":""} style="accent-color:#0891b2">
+        <span style="font-size:.75rem;flex:1">${item}</span>
+        ${exists?'<span style="font-size:.6rem;color:#22d3ee">✓ Ada</span>':''}
+      </label>`;
+    });
+    html+="</div>";
+  });
+  document.getElementById("bulk-template-area").innerHTML=html;
+}
+
+function savePMBulk(){
+  const mesinId=document.getElementById("bulk-mesin").value;
+  const tek=document.getElementById("bulk-tek").value;
+  const start=document.getElementById("bulk-start").value||today();
+  if(!mesinId){alert("Pilih mesin dulu!");return;}
+  const checkboxes=document.querySelectorAll('#bulk-template-area input[type=checkbox]:checked:not(:disabled)');
+  if(!checkboxes.length){alert("Pilih minimal 1 aktivitas!");return;}
+  let added=0;
+  checkboxes.forEach(cb=>{
+    const frek=cb.dataset.frek;
+    const nextId="PM"+String(Date.now()+added).slice(-6);
+    const rec={id:nextId,machineId:mesinId,aktivitas:cb.value,frekuensi:frek,lastDone:"",nextDue:calcNextDue(start,frek),teknisi:tek,status:"Mendatang",checklist:[],catatan:""};
+    preventive=[...preventive,rec];
+    added++;
+  });
+  ss("pm",preventive);closeModal();renderPreventive();
+  showToastMsg(`✅ ${added} jadwal PM berhasil ditambahkan`);
+}
+
+// ─── EDIT PM ──────────────────────────────────────────────────────────────
+function openEditPM(id){
+  const p=preventive.find(x=>x.id===id);if(!p)return;
+  openModal("Edit Jadwal PM",`
+    <div class="fg"><label>ID</label><input value="${p.id}" readonly style="color:#64748b"/></div>
+    <div class="fg"><label>Mesin</label><select id="pm-mesin">${mOpts(p.machineId)}</select></div>
+    <div class="fg"><label>Aktivitas</label><input id="pm-akt" value="${p.aktivitas}"/></div>
+    <div class="fg"><label>Frekuensi</label><select id="pm-frek" onchange="document.getElementById('pm-next').value=calcNextDue(document.getElementById('pm-last').value,this.value)">${opts(["Harian","Mingguan","Bulanan","3 Bulanan","6 Bulanan","Tahunan"],p.frekuensi)}</select></div>
+    <div class="fg"><label>Terakhir Dilakukan</label><input type="date" id="pm-last" value="${p.lastDone||""}" onchange="document.getElementById('pm-next').value=calcNextDue(this.value,document.getElementById('pm-frek').value)"/></div>
+    <div class="fg"><label>Jadwal Berikutnya</label><input type="date" id="pm-next" value="${p.nextDue||""}"/></div>
+    <div class="fg"><label>Teknisi PIC</label><input id="pm-tek" value="${p.teknisi||""}"/></div>
+    <div class="fg"><label>Catatan</label><input id="pm-cat" value="${p.catatan||""}"/></div>
+    <button class="btn-save" onclick="savePM('${id}')">💾 Simpan Perubahan</button>`);
+}
+
+function savePM(id){
+  const isEdit=id&&preventive.some(p=>p.id===id);
+  const nextId=id||(  "PM"+String(Date.now()).slice(-6));
+  const rec={
+    id:nextId,
+    machineId:document.getElementById("pm-mesin").value,
+    aktivitas:document.getElementById("pm-akt").value,
+    frekuensi:document.getElementById("pm-frek").value,
+    lastDone:document.getElementById("pm-last").value,
+    nextDue:document.getElementById("pm-next").value||calcNextDue(document.getElementById("pm-last").value,document.getElementById("pm-frek").value),
+    teknisi:document.getElementById("pm-tek").value,
+    catatan:document.getElementById("pm-cat")?document.getElementById("pm-cat").value:"",
+    status:calcPMStatus(document.getElementById("pm-next").value),
+    checklist:isEdit?(preventive.find(p=>p.id===id).checklist||[]):[]
+  };
+  if(isEdit)preventive=preventive.map(p=>p.id===id?rec:p);
+  else preventive=[...preventive,rec];
+  ss("pm",preventive);closeModal();renderPreventive();
+}
+
+// ─── CHECKLIST MODAL ──────────────────────────────────────────────────────
+function openChecklistPM(id){
+  const p=preventive.find(x=>x.id===id);if(!p)return;
+  const m=machines.find(x=>x.id===p.machineId);
+  const mtype=m?m.type:"DEFAULT";
+  // Gunakan checklist tersimpan, atau generate dari template
+  let checklist=p.checklist&&p.checklist.length?[...p.checklist]:[];
+  if(!checklist.length){
+    // Cari item aktivitas ini di template
+    const tpl=PM_TEMPLATE[mtype]||PM_TEMPLATE["DEFAULT"];
+    for(const grp of tpl){
+      if(grp.items.includes(p.aktivitas)||p.aktivitas.toLowerCase().includes(grp.kat.toLowerCase())){
+        checklist=grp.items.map(i=>({text:i,done:false}));break;
+      }
+    }
+    // Jika tidak ketemu template, buat 1 item dari aktivitas itu sendiri
+    if(!checklist.length)checklist=[{text:p.aktivitas,done:false}];
+  }
+  const done=checklist.filter(c=>c.done).length;
+  const total=checklist.length;
+  openModal(`✅ Checklist PM — ${p.aktivitas}`,`
+    <div style="font-size:.72rem;color:#64748b;margin-bottom:10px">
+      ${m?`⚙️ ${m.id} · ${m.type} · ${m.area}`:""}  · 🔄 ${p.frekuensi} · 📅 Due: <span style="color:#22d3ee">${p.nextDue||"-"}</span>
+    </div>
+    <div style="background:rgba(8,145,178,.08);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px"><span style="color:#94a3b8">Progress</span><span id="cl-count" style="color:#22d3ee;font-weight:700">${done}/${total}</span></div>
+      <div class="bar-bg"><div class="bar-fill" id="cl-bar" style="background:#0891b2;width:${total?Math.round(done/total*100):0}%"></div></div>
+    </div>
+    <div id="cl-list">
+      ${checklist.map((c,i)=>`
+        <label style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;background:rgba(2,6,23,.5);margin-bottom:4px;cursor:pointer;border:1px solid ${c.done?"rgba(5,150,105,.4)":"rgba(51,65,85,.5)"}">
+          <input type="checkbox" ${c.done?"checked":""} onchange="toggleCLItem(this,${i},'${id}')" style="accent-color:#059669;width:16px;height:16px;flex-shrink:0">
+          <span style="font-size:.78rem;${c.done?"text-decoration:line-through;color:#475569":"color:#e2e8f0"}">${c.text}</span>
+        </label>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+      <button class="btn" style="background:#334155;color:#e2e8f0;padding:9px;font-size:.8rem" onclick="checkAllCL('${id}',true)">☑ Centang Semua</button>
+      <button class="btn" style="background:#334155;color:#e2e8f0;padding:9px;font-size:.8rem" onclick="checkAllCL('${id}',false)">☐ Reset</button>
+    </div>
+    <button class="btn-save" style="margin-top:8px;background:#059669" onclick="completePM('${id}')">✅ Selesai & Perbarui Jadwal</button>`);
+  // Simpan checklist sementara ke state
+  _clState={id,checklist};
+}
+
+let _clState={id:null,checklist:[]};
+function toggleCLItem(cb,idx,pmId){
+  if(_clState.id!==pmId)return;
+  _clState.checklist[idx].done=cb.checked;
+  // Update bar
+  const done=_clState.checklist.filter(c=>c.done).length;
+  const total=_clState.checklist.length;
+  const pct=total?Math.round(done/total*100):0;
+  const bar=document.getElementById("cl-bar");
+  const cnt=document.getElementById("cl-count");
+  if(bar)bar.style.width=pct+"%";
+  if(cnt)cnt.textContent=done+"/"+total;
+  // Warna label
+  const label=cb.closest("label");
+  if(label){
+    label.style.borderColor=cb.checked?"rgba(5,150,105,.4)":"rgba(51,65,85,.5)";
+    const span=label.querySelector("span");
+    if(span){span.style.textDecoration=cb.checked?"line-through":"";span.style.color=cb.checked?"#475569":"#e2e8f0";}
+  }
+}
+function checkAllCL(pmId,val){
+  if(_clState.id!==pmId)return;
+  _clState.checklist=_clState.checklist.map(c=>({...c,done:val}));
+  openChecklistPM(pmId);// re-render
+}
+function completePM(id){
+  const done=_clState.checklist.filter(c=>c.done).length;
+  const total=_clState.checklist.length;
+  if(done<total){
+    const p=preventive.find(x=>x.id===id);
+    const pct=Math.round(done/total*100);
+    if(!confirm(`Baru ${done}/${total} item selesai (${pct}%). Tandai selesai tetap?`))return;
+  }
+  preventive=preventive.map(p=>{
+    if(p.id!==id)return p;
+    const nextDue=calcNextDue(today(),p.frekuensi);
+    return{...p,lastDone:today(),nextDue,status:calcPMStatus(nextDue),checklist:_clState.checklist.map(c=>({...c,done:false}))};
+  });
+  ss("pm",preventive);closeModal();renderPreventive();
+  showToastMsg("✅ PM selesai! Jadwal berikutnya diperbarui.");
+}
+
+function markPMDone(id){completePM(id);}
+function delPM(id){
+  cmmsConfirm("Hapus Jadwal PM","Jadwal PM ini akan dihapus permanen.","Hapus").then(ok=>{
+    if(!ok)return;
+    preventive=preventive.filter(p=>p.id!==id);
+    ss("pm",preventive);renderPreventive();
+  });
+}
+function exportPM(){
+  dlCSV([
+    ["ID","MESIN","TIPE MESIN","AREA","AKTIVITAS","FREKUENSI","TERAKHIR DONE","JADWAL BERIKUTNYA","TEKNISI","STATUS","CATATAN"],
+    ...preventive.map(p=>{const m=machines.find(x=>x.id===p.machineId);return[p.id,p.machineId,m?m.type:"",m?m.area:"",p.aktivitas,p.frekuensi,p.lastDone||"-",p.nextDue||"-",p.teknisi||"-",p.status,p.catatan||""];})
+  ],"Jadwal_PM");
+}
+function showToastMsg(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>{t.classList.remove("show");t.textContent="✅ Tersimpan";},2500);}
+
+// ═══ SPAREPART ════════════════════════════════════════════════════════════
+let spQ="",spFilt="Semua";
+function renderSparepart(){
+  const kats=["Semua","Kritis",...new Set(spareparts.map(s=>s.kategori))];
+  const filtered=spareparts.filter(s=>{
+    const mq=s.nama.toLowerCase().includes(spQ.toLowerCase())||s.kode.toLowerCase().includes(spQ.toLowerCase());
+    const mf=spFilt==="Semua"?true:spFilt==="Kritis"?s.stok<=s.minStok:s.kategori===spFilt;
+    return mq&&mf;
+  });
+  const totalNilai=spareparts.reduce((a,s)=>a+s.stok*s.harga,0);
+  let html=`
+  <div class="hrow">
+    <div><div style="font-size:1.2rem;font-weight:900">Stock <span style="color:#22d3ee">Sparepart</span></div></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-green" onclick="exportSP()">📊 Export</button>
+      <button class="btn btn-cyan" onclick="openAddSP()">+ Tambah</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">
+    <div class="card" style="padding:9px;text-align:center"><div style="font-weight:900;font-size:1.1rem">${spareparts.length}</div><div style="font-size:.65rem;color:#64748b">Total Item</div></div>
+    <div class="card" style="padding:9px;text-align:center;border-color:rgba(185,28,28,.4)"><div style="font-weight:900;font-size:1.1rem;color:#f87171">${spareparts.filter(s=>s.stok<=s.minStok).length}</div><div style="font-size:.65rem;color:#64748b">Kritis</div></div>
+    <div class="card" style="padding:9px;text-align:center"><div style="font-weight:700;font-size:.78rem">Rp${(totalNilai/1e6).toFixed(1)}jt</div><div style="font-size:.65rem;color:#64748b">Nilai Total</div></div>
+  </div>
+  <div class="chips">${kats.map(k=>`<button class="chip${spFilt===k?" on":""}" onclick="spFilt='${k}';renderSparepart()">${k==="Kritis"?"🔴 ":""}${k}</button>`).join("")}</div>
+  <input class="search" placeholder="Cari nama/kode..." value="${spQ}" oninput="spQ=this.value;renderSparepart()"/>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Kode</th><th>Nama</th><th>Stok</th><th>Min</th><th>Aksi</th></tr></thead>
+    <tbody>`;
+  filtered.forEach(s=>{
+    const k=s.stok<=s.minStok;
+    html+=`<tr${k?' style="background:rgba(127,29,29,.08)"':""}>
+      <td style="color:#22d3ee;font-size:.7rem;font-weight:700">${s.kode}</td>
+      <td><div style="font-weight:700;font-size:.75rem">${s.nama}</div><div style="font-size:.65rem;color:#64748b">${s.kategori}·${s.satuan}</div></td>
+      <td style="text-align:center">
+        <div class="stk">
+          <button onclick="adjSP('${s.id}',-1)">−</button>
+          <span style="font-weight:700;min-width:22px;text-align:center;color:${k?"#f87171":"#fff"}">${s.stok}</span>
+          <button onclick="adjSP('${s.id}',1)">+</button>
+        </div>${k?`<div style="font-size:.6rem;color:#f87171">⚠Kritis</div>`:""}
+      </td>
+      <td style="text-align:center;color:#94a3b8">${s.minStok}</td>
+      <td><div style="display:flex;gap:3px">
+        <button class="btn-sm btn-edit" onclick="openEditSP('${s.id}')">Edit</button>
+        <button class="btn-sm btn-del" onclick="delSP('${s.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById("pg-sparepart").innerHTML=html;
+}
+function openAddSP(){editId=null;buildSPForm({id:"SP"+String(spareparts.length+1).padStart(3,"0"),kode:"",nama:"",kategori:"Bearing",satuan:"Pcs",stok:0,minStok:0,harga:0,lokasi:"",supplier:""});}
+function openEditSP(id){const s=spareparts.find(x=>x.id===id);if(!s)return;editId=id;buildSPForm(s);}
+function buildSPForm(s){
+  openModal((editId?"Edit":"Tambah")+" Sparepart",`
+    <div class="fg"><label>Kode Part</label><input id="s-kode" value="${s.kode||""}"/></div>
+    <div class="fg"><label>Nama Part</label><input id="s-nama" value="${s.nama||""}"/></div>
+    <div class="fg"><label>Kategori</label><select id="s-kat">${opts(["Bearing","Belt","Filter","Pelumas","Seal","Electrical","Sensor","Lainnya"],s.kategori||"Bearing")}</select></div>
+    <div class="fg"><label>Satuan</label><select id="s-sat">${opts(["Pcs","Liter","Meter","Kg","Kaleng","Set"],s.satuan||"Pcs")}</select></div>
+    <div class="fg"><label>Stok</label><input type="number" id="s-stok" value="${s.stok||0}"/></div>
+    <div class="fg"><label>Min Stok</label><input type="number" id="s-min" value="${s.minStok||0}"/></div>
+    <div class="fg"><label>Harga (Rp)</label><input type="number" id="s-harga" value="${s.harga||0}"/></div>
+    <div class="fg"><label>Lokasi Rak</label><input id="s-lok" value="${s.lokasi||""}"/></div>
+    <div class="fg"><label>Supplier</label><input id="s-sup" value="${s.supplier||""}"/></div>
+    <button class="btn-save" onclick="saveSP('${s.id}')">💾 Simpan</button>`);
+}
+function saveSP(id){
+  const rec={id:editId||id,kode:document.getElementById("s-kode").value,nama:document.getElementById("s-nama").value,kategori:document.getElementById("s-kat").value,satuan:document.getElementById("s-sat").value,stok:+document.getElementById("s-stok").value,minStok:+document.getElementById("s-min").value,harga:+document.getElementById("s-harga").value,lokasi:document.getElementById("s-lok").value,supplier:document.getElementById("s-sup").value};
+  if(editId)spareparts=spareparts.map(s=>s.id===editId?rec:s);
+  else spareparts=[...spareparts,rec];
+  save("sp",spareparts);closeModal();renderSparepart();
+}
+function adjSP(id,d){spareparts=spareparts.map(s=>s.id===id?{...s,stok:Math.max(0,s.stok+d)}:s);save("sp",spareparts);renderSparepart();}
+function delSP(id){if(confirm("Hapus?")){{spareparts=spareparts.filter(s=>s.id!==id);save("sp",spareparts);renderSparepart();}}}
+function exportSP(){dlCSV([["ID","KODE","NAMA","KATEGORI","SATUAN","STOK","MIN STOK","HARGA","NILAI TOTAL","LOKASI","SUPPLIER"],...spareparts.map(s=>[s.id,s.kode,s.nama,s.kategori,s.satuan,s.stok,s.minStok,s.harga,s.stok*s.harga,s.lokasi,s.supplier])],"Stock_Sparepart");}
+
+// ═══ AUDIT ════════════════════════════════════════════════════════════════
+let auditPeriod="Semua";
+let _auditCache={period:null,histLen:0,html:null}; // lazy cache
+
+function renderAudit(){
+  const periods=["Semua",...[...new Set(history.map(h=>h.tanggal?.slice(0,7)))].sort().reverse()];
+  // Lazy: skip kalkulasi jika periode & data tidak berubah
+  if(_auditCache.period===auditPeriod && _auditCache.histLen===history.length && _auditCache.html){
+    // Cukup update selector periode saja
+    document.getElementById("pg-audit").innerHTML=_auditCache.html;
+    return;
+  }
+  const filtered=auditPeriod==="Semua"?history:history.filter(h=>(h.tanggal||"").startsWith(auditPeriod));
+  const totalKasus=filtered.length;
+  const corrective=filtered.filter(h=>h.tipeKerja==="CORRECTIVE").length;
+  const preventif=filtered.filter(h=>h.tipeKerja==="PREVENTIVE").length;
+  const totalDT=filtered.reduce((a,h)=>a+(h.downtime||0),0);
+  const selesai=filtered.filter(h=>h.status==="Selesai").length;
+  const pmDone=preventive.filter(p=>p.status==="Mendatang").length;
+  const pmComp=preventive.length?Math.round(pmDone/preventive.length*100):0;
+
+  // Rankings
+  const rankMachine=()=>{const map={};filtered.filter(h=>h.tipeKerja==="CORRECTIVE").forEach(h=>{map[h.mesinId]=(map[h.mesinId]||0)+1;});return Object.entries(map).map(([id,c])=>{const m=machines.find(x=>x.id===id);return{id,c,type:m?.type||"-",merk:m?.merk||"-"};}).sort((a,b)=>b.c-a.c)};
+  const rankDT=()=>{const map={};filtered.forEach(h=>{map[h.mesinId]=(map[h.mesinId]||0)+(h.downtime||0);});return Object.entries(map).map(([id,dt])=>{const m=machines.find(x=>x.id===id);return{id,dt,type:m?.type||"-",merk:m?.merk||"-"};}).sort((a,b)=>b.dt-a.dt).slice(0,8);};
+  const rankArea=()=>{const map={};filtered.forEach(h=>{const k=h.areaKerusakan||"Tdk Tercatat";map[k]=(map[k]||0)+1;});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8);};
+  const rankDetail=()=>{const map={};filtered.forEach(h=>{const items=Array.isArray(h.detailKerusakan)?h.detailKerusakan:[h.detailKerusakan||""];items.filter(Boolean).forEach(d=>{const k=d.replace(/ -.*$/,"")||"Tdk Tercatat";map[k]=(map[k]||0)+1;});});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8);};
+  const rankJenis=()=>{const map={};filtered.forEach(h=>{const k=h.jenisKerusakan||"Tdk Tercatat";map[k]=(map[k]||0)+1;});return Object.entries(map).sort((a,b)=>b[1]-a[1]);};
+
+  const rcl=i=>i===0?"r1":i===1?"r2":i===2?"r3":"rn";
+  const rankByType=["BUBUT","MILLING","CRANE","LAS MIG","LAS TIG","VERTICAL BORING","RADIAL DRILLING","CUTTING TORCH"].map(t=>{
+    const list=machines.filter(m=>m.type===t);
+    const ranked=list.map(m=>{const c=filtered.filter(h=>h.mesinId===m.id&&h.tipeKerja==="CORRECTIVE").length;const dt=filtered.filter(h=>h.mesinId===m.id).reduce((a,h)=>a+(h.downtime||0),0);return{id:m.id,merk:m.merk,c,dt};}).filter(x=>x.c>0).sort((a,b)=>b.c-a.c).slice(0,3);
+    return{type:t,ranked};
+  }).filter(x=>x.ranked.length>0);
+
+  let html=`
+  <div class="hrow">
+    <div><div style="font-size:1.2rem;font-weight:900">Laporan <span style="color:#22d3ee">Audit</span></div><div style="font-size:.75rem;color:#64748b">Analisis lengkap</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <select onchange="_auditCache.html=null;auditPeriod=this.value;renderAudit()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:6px 9px;font-size:.78rem;outline:none">
+        ${periods.map(p=>`<option${p===auditPeriod?" selected":""}>${p}</option>`).join("")}
+      </select>
+      <button class="btn btn-green" onclick="exportAudit()">📊 Export Full</button>
+    </div>
+  </div>
+  <div style="background:rgba(8,145,178,.07);border:1px solid rgba(8,145,178,.2);border-radius:11px;padding:11px;margin-bottom:12px">
+    <div class="sec cyan">📋 Ringkasan — ${auditPeriod}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+      ${[["Total Kasus",totalKasus,"#22d3ee"],["Corrective",corrective,"#f87171"],["Preventive",preventif,"#86efac"],["Total Downtime",fmtMin(totalDT),"#fbbf24"],["Selesai",selesai,"#34d399"],["PM Compliance",pmComp+"%",pmComp>=80?"#34d399":"#f87171"]].map(([l,v,c])=>`<div style="background:rgba(2,6,23,.5);border-radius:7px;padding:8px;text-align:center"><div style="font-weight:900;font-size:1rem;color:${c}">${v}</div><div style="font-size:.62rem;color:#64748b">${l}</div></div>`).join("")}
+    </div>
+  </div>`;
+
+  if(!totalKasus){html+=`<div class="card" style="text-align:center;color:#475569;font-style:italic;padding:24px">Belum ada data. Tambahkan History Card dulu.</div>`;document.getElementById("pg-audit").innerHTML=html;return;}
+
+  html+=`<div class="sec cyan">🏆 Ranking Mesin Sering Rusak per Tipe</div>`;
+  if(!rankByType.length)html+=`<div style="color:#475569;font-size:.78rem;margin-bottom:10px;font-style:italic">Belum ada data kerusakan corrective</div>`;
+  rankByType.forEach(({type,ranked})=>{
+    html+=`<div class="card" style="margin-bottom:8px"><div style="font-weight:700;color:#22d3ee;font-size:.8rem;margin-bottom:7px">⚙️ ${type}</div>`;
+    ranked.forEach((m,i)=>{html+=`<div class="rank-item"><div class="${rcl(i)} rnum">${i+1}</div><div style="flex:1"><div style="font-weight:700;font-size:.78rem">${m.id}</div><div style="font-size:.65rem;color:#64748b">${m.merk}</div></div><div style="text-align:right"><div style="color:#f87171;font-weight:700;font-size:.78rem">${m.c}x rusak</div><div style="font-size:.63rem;color:#fbbf24">${fmtMin(m.dt)}</div></div></div>`;});
+    html+=`</div>`;
+  });
+
+  html+=`<div class="sec red">⏱ Top Downtime Terlama</div><div class="card" style="margin-bottom:12px">`;
+  rankDT().forEach((x,i)=>{html+=`<div class="rank-item"><div class="${rcl(i)} rnum">${i+1}</div><div style="flex:1"><div style="font-weight:700;font-size:.78rem">${x.id} <span style="color:#64748b;font-weight:400">${x.merk}</span></div><div style="font-size:.65rem;color:#64748b">${x.type}</div></div><div style="font-weight:700;color:#fbbf24">${fmtMin(x.dt)}</div></div>`;});
+  html+=`</div>`;
+
+  html+=`<div class="sec amber">📍 Ranking Area Kerusakan</div><div class="card" style="margin-bottom:12px">`;
+  rankArea().forEach(([k,v],i)=>{html+=`<div class="rank-item"><div class="${rcl(i)} rnum">${i+1}</div><div style="flex:1;font-size:.76rem;font-weight:600">${k}</div><div style="font-weight:700;color:#fbbf24">${v}x</div></div>`;});
+  html+=`</div>`;
+
+  html+=`<div class="sec amber">🔩 Ranking Komponen/Part Rusak</div><div class="card" style="margin-bottom:12px">`;
+  rankDetail().forEach(([k,v],i)=>{html+=`<div class="rank-item"><div class="${rcl(i)} rnum">${i+1}</div><div style="flex:1;font-size:.76rem;font-weight:600">${k}</div><div style="font-weight:700;color:#fbbf24">${v}x</div></div>`;});
+  html+=`</div>`;
+
+  html+=`<div class="sec">⚠️ Distribusi Jenis Kerusakan</div><div class="card">`;
+  const jk=rankJenis();
+  const colMap={MEKANIK:"#fbbf24",ELEKTRIK:"#93c5fd",HIDROLIK:"#6ee7b7",PNEUMATIK:"#d8b4fe",LAINNYA:"#94a3b8"};
+  jk.forEach(([k,v])=>{const pct=totalKasus?Math.round(v/totalKasus*100):0;const c=colMap[k]||"#94a3b8";html+=`<div class="bar-row"><div class="bar-label"><span>${k}</span><span style="color:${c};font-weight:700">${v}x (${pct}%)</span></div><div class="bar-bg"><div class="bar-fill" style="background:${c};width:${pct}%"></div></div></div>`;});
+  html+=`</div>`;
+  _auditCache={period:auditPeriod,histLen:history.length,html};
+  document.getElementById("pg-audit").innerHTML=html;
+}
+
+function exportAudit(){
+  const filtered=auditPeriod==="Semua"?history:history.filter(h=>(h.tanggal||"").startsWith(auditPeriod));
+  const totalDT=filtered.reduce((a,h)=>a+(h.downtime||0),0);
+  const rows=[
+    ["=== LAPORAN AUDIT MAINTENANCE ==="],[""],
+    ["PERIODE",auditPeriod],["TANGGAL CETAK",new Date().toLocaleDateString("id-ID")],[""],
+    ["TOTAL KASUS",filtered.length],["CORRECTIVE",filtered.filter(h=>h.tipeKerja==="CORRECTIVE").length],
+    ["PREVENTIVE",filtered.filter(h=>h.tipeKerja==="PREVENTIVE").length],
+    ["TOTAL DOWNTIME",fmtMin(totalDT)],["SELESAI",filtered.filter(h=>h.status==="Selesai").length],[""],
+    ["=== DETAIL HISTORY ==="],
+    ["CASE-ID","TGL MULAI","TGL SELESAI","MESIN","TIPE","JENIS KERUSAKAN","AREA KERUSAKAN","DETAIL","DOWNTIME","TEKNISI","STATUS"],
+    ...filtered.map(h=>[h.caseId,h.tanggal,h.tanggalSelesai||h.tanggal,h.mesinId,h.tipeKerja,h.jenisKerusakan,h.areaKerusakan,Array.isArray(h.detailKerusakan)?h.detailKerusakan.map(d=>d.replace(/ -.*$/,"")).join("; "):(h.detailKerusakan||"").replace(/ -.*$/,""),fmtMin(h.downtime),h.teknisi,h.status])
+  ];
+  dlCSV(rows,"Laporan_Audit_"+auditPeriod);
+}
+
+// ═══ UTILS ════════════════════════════════════════════════════════════════
+function dlCSV(rows,fname){
+  const csv=rows.map(r=>r.map(c=>`"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname+".csv";a.click();
+}
+
+
+function backupCMMS(){
+  const data={};
+  Object.keys(localStorage).forEach(k=>{ if(k.startsWith('cmmsL_')) data[k]=localStorage.getItem(k); });
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='CMMS_Backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+function restoreCMMS(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      Object.keys(data).forEach(k=>localStorage.setItem(k,data[k]));
+      alert('Restore berhasil. Aplikasi dimuat ulang.');
+      location.reload();
+    }catch(err){ alert('File backup tidak valid');}
+  };
+  reader.readAsText(file);
+}
+function resetCMMS(){
+  cmmsConfirm('🗑 Reset Semua Data','Seluruh data History, PM, Sparepart, dan Mesin akan dihapus permanen. Pastikan sudah backup!','Hapus Semua').then(ok=>{
+    if(!ok)return;
+    cmmsConfirm('⚠️ Konfirmasi Terakhir','Yakin ingin menghapus semua data?','Ya, Hapus').then(ok2=>{
+      if(!ok2)return;
+      Object.keys(localStorage).forEach(k=>{ if(k.startsWith('cmmsL_')) localStorage.removeItem(k); });
+      location.reload();
+    });
+  });
+}
+
+function renderSetting(){
+  let totalBytes=0;
+  Object.keys(localStorage).forEach(k=>{if(k.startsWith('cmmsL_'))totalBytes+=((localStorage.getItem(k)||'').length*2);});
+  const usedKB=(totalBytes/1024).toFixed(1);
+  const histRaw=JSON.stringify(history);
+  const histCompressed=JSON.stringify(compressArr(history));
+  const savingPct=histRaw.length?Math.round((1-histCompressed.length/histRaw.length)*100):0;
+  const isOnline=navigator.onLine;
+
+  document.getElementById('pg-setting').innerHTML=`
+  <div class="card" style="background:linear-gradient(135deg,rgba(8,145,178,.12),rgba(2,6,23,.5));border-color:rgba(34,211,238,.3)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:2.5rem">⚙️</div>
+      <div>
+        <div style="font-weight:900;font-size:1rem;color:#22d3ee">CMMS Maintenance</div>
+        <div style="font-size:.7rem;color:#64748b">v2.0 · Offline-First PWA</div>
+        <div style="margin-top:4px"><span style="font-size:.65rem;padding:2px 7px;border-radius:4px;background:${isOnline?'rgba(6,78,59,.4)':'rgba(120,53,15,.4)'};color:${isOnline?'#6ee7b7':'#fbbf24'};border:1px solid ${isOnline?'#047857':'#b45309'}">${isOnline?'🟢 Online':'🟡 Offline'}</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="background:rgba(8,145,178,.06);border-color:rgba(34,211,238,.2)">
+    <div class="card-title" style="color:#22d3ee">💾 Info Storage</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <div style="background:rgba(2,6,23,.5);border-radius:7px;padding:8px;text-align:center"><div style="font-weight:900;font-size:1rem;color:#22d3ee">${usedKB} KB</div><div style="font-size:.65rem;color:#64748b">Digunakan</div></div>
+      <div style="background:rgba(2,6,23,.5);border-radius:7px;padding:8px;text-align:center"><div style="font-weight:900;font-size:1rem;color:#6ee7b7">${savingPct}%</div><div style="font-size:.65rem;color:#64748b">Hemat Kompresi</div></div>
+      <div style="background:rgba(2,6,23,.5);border-radius:7px;padding:8px;text-align:center"><div style="font-weight:900;font-size:1rem;color:#fbbf24">${history.length}</div><div style="font-size:.65rem;color:#64748b">Total History</div></div>
+      <div style="background:rgba(2,6,23,.5);border-radius:7px;padding:8px;text-align:center"><div style="font-weight:900;font-size:1rem;color:#d8b4fe">${machines.length}</div><div style="font-size:.65rem;color:#64748b">Total Mesin</div></div>
+    </div>
+  </div>
+  <div class="sec cyan">📦 Data Management</div>
+  <div class="card" style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-green" style="width:100%;padding:10px;font-size:.85rem" onclick="backupCMMS()">📥 Backup Data (JSON)</button>
+    <button class="btn btn-cyan" style="width:100%;padding:10px;font-size:.85rem" onclick="document.getElementById('restoreFile').click()">📤 Restore dari Backup</button>
+    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreCMMS(event)">
+  </div>
+  ${_deferredInstall?`<div class="card" style="border-color:rgba(34,211,238,.3)"><button class="btn btn-cyan" style="width:100%;padding:10px;font-size:.85rem" onclick="doInstall()">📲 Pasang sebagai App</button></div>`:''}
+  <div class="sec red">⚠️ Danger Zone</div>
+  <div class="card">
+    <button class="btn btn-red" style="width:100%;padding:10px;font-size:.85rem" onclick="resetCMMS()">🗑 Reset Semua Data</button>
+  </div>
+  <div class="card">
+    <div style="font-weight:700;font-size:.88rem;margin-bottom:6px">Tentang Aplikasi</div>
+    <div style="font-size:.72rem;color:#64748b;line-height:1.8">
+      <div>✅ Dashboard real-time</div>
+      <div>✅ Manajemen 90+ mesin</div>
+      <div>✅ History Card + Pagination 50/hal</div>
+      <div>✅ Multi-pilih Detail Kerusakan</div>
+      <div>✅ Preventive Maintenance tracker</div>
+      <div>✅ Stok Sparepart + alert kritis</div>
+      <div>✅ Laporan Audit + Export CSV</div>
+      <div>✅ Kompresi data localStorage</div>
+      <div>✅ 100% Offline — tidak perlu internet</div>
+    </div>
+  </div>`;
+}
+
+// ═══ CUSTOM CONFIRM ═══════════════════════════════════════════════════════
+let _ccResolve=null;
+function cmmsConfirm(title,msg,okLabel='OK'){
+  return new Promise(resolve=>{
+    _ccResolve=resolve;
+    document.getElementById('cc-title').textContent=title;
+    document.getElementById('cc-msg').textContent=msg;
+    document.getElementById('cc-ok-btn').textContent=okLabel;
+    document.getElementById('cmms-confirm').classList.add('open');
+  });
+}
+function ccResolve(val){
+  document.getElementById('cmms-confirm').classList.remove('open');
+  if(_ccResolve){_ccResolve(val);_ccResolve=null;}
+}
+
+// ═══ PWA / INSTALL ════════════════════════════════════════════════════════
+let _deferredInstall=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  _deferredInstall=e;
+  if(!localStorage.getItem('cmmsInstallDismissed')){
+    document.getElementById('install-banner').classList.add('show');
+  }
+});
+function doInstall(){
+  if(!_deferredInstall)return;
+  _deferredInstall.prompt();
+  _deferredInstall.userChoice.then(()=>{_deferredInstall=null;dismissInstall();});
+}
+function dismissInstall(){
+  document.getElementById('install-banner').classList.remove('show');
+  localStorage.setItem('cmmsInstallDismissed','1');
+}
+
+// ═══ OFFLINE DETECTION ════════════════════════════════════════════════════
+function updateOnlineStatus(){
+  const badge=document.getElementById('offlineBadge');
+  if(badge)badge.style.display=navigator.onLine?'none':'inline';
+}
+window.addEventListener('online',updateOnlineStatus);
+window.addEventListener('offline',updateOnlineStatus);
+
+// ═══ SERVICE WORKER (inline) ══════════════════════════════════════════════
+if('serviceWorker' in navigator){
+  const swCode=`
+const CACHE='cmms-v2';
+const ASSETS=[location.href||'/'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{if(res&&res.status===200){const c=res.clone();caches.open(CACHE).then(cache=>cache.put(e.request,c));}return res;}).catch(()=>caches.match(e.request))));});
+`;
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  const swUrl=URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+
+// ═══ INIT ════════════════════════════════════════════════════════════════
+document.getElementById("topDate").textContent=new Date().toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+updateOnlineStatus();
+
+// Splash → hide after render
+window.addEventListener('load',()=>{
+  renderDashboard();
+  setTimeout(()=>{
+    const sp=document.getElementById('splash');
+    if(sp){sp.classList.add('hide');setTimeout(()=>sp.remove(),500);}
+  },1000);
+});
+</script>
+</body>
+</html>
